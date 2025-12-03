@@ -22,11 +22,14 @@ import {
     DialogTitle,
     DialogContent,
     DialogActions,
+    Snackbar,
+    Alert,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import CheckIcon from '@mui/icons-material/Check';
 import BlockIcon from '@mui/icons-material/Block';
+import RestoreIcon from '@mui/icons-material/Restore';
 import Navbar from '@/components/Navbar';
 import { useRouter } from 'next/navigation';
 
@@ -61,6 +64,18 @@ export default function AdminDashboard() {
     const [editingPost, setEditingPost] = React.useState<any>(null);
     const [editTitle, setEditTitle] = React.useState('');
     const [editDescription, setEditDescription] = React.useState('');
+
+    // Undo / Snackbar State
+    const [snackbarOpen, setSnackbarOpen] = React.useState(false);
+    const [snackbarMessage, setSnackbarMessage] = React.useState('');
+    const [undoAction, setUndoAction] = React.useState<(() => void) | null>(null);
+    const pendingActionRef = React.useRef<NodeJS.Timeout | null>(null);
+
+    // Blacklist Dialog State
+    const [blacklistDialogOpen, setBlacklistDialogOpen] = React.useState(false);
+    const [blacklistReason, setBlacklistReason] = React.useState('');
+    const [userToBlacklist, setUserToBlacklist] = React.useState<string | null>(null);
+
     const router = useRouter();
 
     const fetchUsers = React.useCallback(async () => {
@@ -119,47 +134,99 @@ export default function AdminDashboard() {
         }
     };
 
-    const handleUserAction = async (id: string, action: 'confirm' | 'blacklist' | 'delete') => {
-        const token = localStorage.getItem('token');
-        let res;
-        if (action === 'delete') {
-            res = await fetch(`/api/users?id=${id}`, {
-                method: 'DELETE',
-                headers: { Authorization: `Bearer ${token}` },
-            });
-        } else {
-            const updates: any = {};
-            if (action === 'confirm') updates.isConfirmed = true;
-            if (action === 'blacklist') updates.isBlacklisted = true;
-
-            res = await fetch('/api/users', {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify({ _id: id, ...updates }),
-            });
+    const handleUserAction = async (id: string, action: 'confirm' | 'blacklist' | 'delete' | 'unblacklist', reason?: string) => {
+        if (action === 'blacklist' && !reason) {
+            setUserToBlacklist(id);
+            setBlacklistReason('');
+            setBlacklistDialogOpen(true);
+            return;
         }
 
-        if (res.ok) {
-            fetchUsers();
+        const executeAction = async () => {
+            const token = localStorage.getItem('token');
+            let res;
+            if (action === 'delete') {
+                res = await fetch(`/api/users?id=${id}`, {
+                    method: 'DELETE',
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+            } else {
+                const updates: any = {};
+                if (action === 'confirm') updates.isConfirmed = true;
+                if (action === 'blacklist') {
+                    updates.isBlacklisted = true;
+                    updates.reason = reason;
+                }
+                if (action === 'unblacklist') updates.isBlacklisted = false;
+
+                res = await fetch('/api/users', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({ _id: id, ...updates }),
+                });
+            }
+
+            if (res.ok) {
+                fetchUsers();
+            }
+        };
+
+        if (action === 'blacklist') {
+            // Delayed execution for blacklist
+            setUsers(prev => prev.map(u => u._id === id ? { ...u, isBlacklisted: true } : u)); // Optimistic update
+            setSnackbarMessage('User blacklisted. Undo?');
+            setUndoAction(() => () => {
+                if (pendingActionRef.current) clearTimeout(pendingActionRef.current);
+                fetchUsers(); // Revert optimistic update
+                setSnackbarOpen(false);
+            });
+            setSnackbarOpen(true);
+
+            pendingActionRef.current = setTimeout(() => {
+                executeAction();
+            }, 5000);
+        } else if (action === 'unblacklist') {
+            await executeAction();
+            alert('User unblacklisted and notified.');
+        } else {
+            await executeAction();
+        }
+    };
+
+    const confirmBlacklist = () => {
+        if (userToBlacklist) {
+            handleUserAction(userToBlacklist, 'blacklist', blacklistReason);
+            setBlacklistDialogOpen(false);
         }
     };
 
     const handleDeletePost = async (postId: string) => {
-        if (!confirm('Are you sure you want to delete this post?')) return;
-        const token = localStorage.getItem('token');
-        const res = await fetch(`/api/posts?id=${postId}`, {
-            method: 'DELETE',
-            headers: { Authorization: `Bearer ${token}` },
-        });
+        // Optimistic update
+        const postToDelete = myPosts.find(p => p._id === postId);
+        setMyPosts(prev => prev.filter(p => p._id !== postId));
 
-        if (res.ok) {
-            fetchMyPosts();
-        } else {
-            alert('Failed to delete post');
-        }
+        setSnackbarMessage('Post deleted. Undo?');
+        setUndoAction(() => () => {
+            if (pendingActionRef.current) clearTimeout(pendingActionRef.current);
+            if (postToDelete) setMyPosts(prev => [postToDelete, ...prev].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+            setSnackbarOpen(false);
+        });
+        setSnackbarOpen(true);
+
+        pendingActionRef.current = setTimeout(async () => {
+            const token = localStorage.getItem('token');
+            const res = await fetch(`/api/posts?id=${postId}`, {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (!res.ok) {
+                alert('Failed to delete post');
+                fetchMyPosts(); // Revert if failed
+            }
+        }, 5000);
     };
 
     const openEditDialog = (post: any) => {
@@ -279,6 +346,11 @@ export default function AdminDashboard() {
                                             <IconButton onClick={() => handleUserAction(user._id, 'delete')} color="error" title="Delete">
                                                 <DeleteIcon />
                                             </IconButton>
+                                            {user.isBlacklisted && (
+                                                <IconButton onClick={() => handleUserAction(user._id, 'unblacklist')} color="info" title="Unblacklist">
+                                                    <RestoreIcon />
+                                                </IconButton>
+                                            )}
                                         </TableCell>
                                     </TableRow>
                                 ))}
@@ -341,6 +413,43 @@ export default function AdminDashboard() {
                     <Button onClick={handleUpdatePost} variant="contained">Update</Button>
                 </DialogActions>
             </Dialog>
+
+            <Dialog open={blacklistDialogOpen} onClose={() => setBlacklistDialogOpen(false)}>
+                <DialogTitle>Blacklist User</DialogTitle>
+                <DialogContent>
+                    <TextField
+                        autoFocus
+                        margin="dense"
+                        label="Reason for blacklisting"
+                        fullWidth
+                        variant="standard"
+                        value={blacklistReason}
+                        onChange={(e) => setBlacklistReason(e.target.value)}
+                    />
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setBlacklistDialogOpen(false)}>Cancel</Button>
+                    <Button onClick={confirmBlacklist} color="error">Blacklist</Button>
+                </DialogActions>
+            </Dialog>
+
+            <Snackbar
+                open={snackbarOpen}
+                autoHideDuration={5000}
+                onClose={(event, reason) => {
+                    if (reason === 'clickaway') return;
+                    setSnackbarOpen(false);
+                }}
+                message={snackbarMessage}
+                action={
+                    <Button color="secondary" size="small" onClick={() => {
+                        if (undoAction) undoAction();
+                    }}>
+                        UNDO
+                    </Button>
+                }
+            />
+
         </>
     );
 }

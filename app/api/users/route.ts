@@ -31,7 +31,7 @@ export async function PUT(request: Request) {
         }
 
         const body = await request.json();
-        const { _id, ...updates } = body;
+        const { _id, reason, ...updates } = body;
 
         if (!_id) {
             return NextResponse.json({ error: 'User ID required' }, { status: 400 });
@@ -40,14 +40,35 @@ export async function PUT(request: Request) {
         const client = await clientPromise;
         const db = client.db('blog_app');
 
+        const targetUser = await db.collection('users').findOne({ _id: new ObjectId(_id) });
+        if (!targetUser) {
+            return NextResponse.json({ error: 'User not found' }, { status: 404 });
+        }
 
         await db.collection('users').updateOne(
             { _id: new ObjectId(_id) },
             { $set: updates }
         );
 
+        // Send email notifications
+        const { sendEmail } = await import('@/lib/email');
+        if (updates.isBlacklisted === true) {
+            await sendEmail(
+                targetUser.email,
+                'Account Blocked - URCSTIT Blog',
+                `Your account has been blocked by an admin.\n\nReason: ${reason || 'No reason provided.'}\n\nIf you believe this is a mistake, please contact the class representative.`
+            );
+        } else if (updates.isBlacklisted === false) {
+            await sendEmail(
+                targetUser.email,
+                'Account Restored - URCSTIT Blog',
+                `Your account has been restored. You can now log in and access the platform.`
+            );
+        }
+
         return NextResponse.json({ message: 'User updated' });
     } catch (error) {
+        console.error('Update user error:', error);
         return NextResponse.json({ error: 'Failed to update user' }, { status: 500 });
     }
 }

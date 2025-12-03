@@ -22,7 +22,7 @@ export default function Footer() {
         >
             <Container maxWidth="sm">
                 <Typography variant="body1" align="center">
-                    is itbienvenu, email <Link href="mailto:bienvenugashema@gmail.com">bienvenugashema@gmail.com</Link>
+                    product from netlyx
                 </Typography>
             </Container>
         </Box>
