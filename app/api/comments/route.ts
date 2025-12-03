@@ -46,3 +46,73 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Failed to create comment' }, { status: 500 });
     }
 }
+
+export async function PUT(request: Request) {
+    try {
+        const user: any = await getUserFromHeader();
+        if (!user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const { commentId, content } = await request.json();
+        if (!commentId || !content) {
+            return NextResponse.json({ error: 'Comment ID and content required' }, { status: 400 });
+        }
+
+        const client = await clientPromise;
+        const db = client.db('blog_app');
+
+        const comment = await db.collection('comments').findOne({ _id: new ObjectId(commentId) });
+        if (!comment) {
+            return NextResponse.json({ error: 'Comment not found' }, { status: 404 });
+        }
+
+        if (comment.authorId !== user.id) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+        }
+
+        await db.collection('comments').updateOne(
+            { _id: new ObjectId(commentId) },
+            { $set: { content } }
+        );
+
+        return NextResponse.json({ message: 'Comment updated' });
+    } catch (error) {
+        return NextResponse.json({ error: 'Failed to update comment' }, { status: 500 });
+    }
+}
+
+export async function DELETE(request: Request) {
+    try {
+        const user: any = await getUserFromHeader();
+        if (!user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const { searchParams } = new URL(request.url);
+        const commentId = searchParams.get('commentId');
+
+        if (!commentId) {
+            return NextResponse.json({ error: 'Comment ID required' }, { status: 400 });
+        }
+
+        const client = await clientPromise;
+        const db = client.db('blog_app');
+
+        const comment = await db.collection('comments').findOne({ _id: new ObjectId(commentId) });
+        if (!comment) {
+            return NextResponse.json({ error: 'Comment not found' }, { status: 404 });
+        }
+
+        // Allow author or super_admin to delete
+        if (comment.authorId !== user.id && user.role !== 'super_admin') {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+        }
+
+        await db.collection('comments').deleteOne({ _id: new ObjectId(commentId) });
+
+        return NextResponse.json({ message: 'Comment deleted' });
+    } catch (error) {
+        return NextResponse.json({ error: 'Failed to delete comment' }, { status: 500 });
+    }
+}

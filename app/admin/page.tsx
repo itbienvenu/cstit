@@ -52,7 +52,7 @@ export default function AdminDashboard() {
     const [title, setTitle] = React.useState('');
     const [description, setDescription] = React.useState('');
     const [users, setUsers] = React.useState<any[]>([]);
-    const [posts, setPosts] = React.useState<any[]>([]); // For managing own posts
+    const [myPosts, setMyPosts] = React.useState<any[]>([]);
     const router = useRouter();
 
     const fetchUsers = React.useCallback(async () => {
@@ -65,6 +65,34 @@ export default function AdminDashboard() {
         }
     }, []);
 
+    const fetchMyPosts = React.useCallback(async () => {
+        const token = localStorage.getItem('token');
+        // We can filter posts by author on the client side for now, or add an API query param
+        // Let's fetch all posts and filter (not efficient for large scale but fine for MVP)
+        // Or better, let's update GET /api/posts to allow filtering by authorId if needed, 
+        // but for now let's just fetch all and filter client side since we don't have a specific route yet.
+        // Actually, let's just fetch all posts and filter by current user id.
+        const res = await fetch('/api/posts', {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+            const allPosts = await res.json();
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
+            // The user object in local storage might not have the ID if we didn't save it properly or if it's different format.
+            // Let's check how we saved it. We saved { name, email, role } in login route, but token has ID.
+            // We need the ID to filter. 
+            // Let's decode token or fetch user profile. 
+            // For simplicity, let's assume we can filter by authorName if unique enough, or just show all for admin?
+            // The request is "he can not the all post that he create".
+            // Let's decode the token to get the ID or fetch "me".
+            // We'll rely on the name for now if ID isn't easily available without decoding lib, 
+            // OR we can fetch /api/auth/me if we had it.
+            // Let's just filter by authorName which we have in local storage user object.
+            const myOwnPosts = allPosts.filter((p: any) => p.authorName === user.name);
+            setMyPosts(myOwnPosts);
+        }
+    }, []);
+
     React.useEffect(() => {
         const token = localStorage.getItem('token');
         const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -72,9 +100,9 @@ export default function AdminDashboard() {
             router.push('/login');
         } else {
             fetchUsers();
-            // fetchPosts(); // TODO: Implement fetching own posts or all posts for admin
+            fetchMyPosts();
         }
-    }, [router, fetchUsers]);
+    }, [router, fetchUsers, fetchMyPosts]);
 
     const handleCreatePost = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -92,6 +120,7 @@ export default function AdminDashboard() {
             alert('Post created successfully');
             setTitle('');
             setDescription('');
+            fetchMyPosts(); // Refresh my posts after creating a new one
         } else {
             alert('Failed to create post');
         }
@@ -140,7 +169,7 @@ export default function AdminDashboard() {
                     <Tabs value={value} onChange={handleChange} aria-label="admin tabs">
                         <Tab label="Create Announcement" />
                         <Tab label="Manage Users" />
-                        {/* <Tab label="Manage Posts" /> */}
+                        <Tab label="My Posts" />
                     </Tabs>
                 </Box>
                 <CustomTabPanel value={value} index={0}>
@@ -220,7 +249,48 @@ export default function AdminDashboard() {
                         </Table>
                     </TableContainer>
                 </CustomTabPanel>
+                <CustomTabPanel value={value} index={2}>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                        {myPosts.map((post) => (
+                            <Paper key={post._id} sx={{ p: 2 }}>
+                                <Typography variant="h6">{post.title}</Typography>
+                                <Typography variant="body2" color="text.secondary" gutterBottom>
+                                    {new Date(post.createdAt).toLocaleDateString()}
+                                </Typography>
+                                <Typography paragraph>{post.description}</Typography>
+                                <Typography variant="subtitle2" sx={{ mt: 2 }}>Comments:</Typography>
+                                <AdminPostComments postId={post._id} />
+                            </Paper>
+                        ))}
+                        {myPosts.length === 0 && (
+                            <Typography>You haven't created any posts yet.</Typography>
+                        )}
+                    </Box>
+                </CustomTabPanel>
             </Container>
         </>
+    );
+}
+
+function AdminPostComments({ postId }: { postId: string }) {
+    const [comments, setComments] = React.useState<any[]>([]);
+
+    React.useEffect(() => {
+        fetch(`/api/comments?postId=${postId}`)
+            .then(res => res.json())
+            .then(data => setComments(data));
+    }, [postId]);
+
+    if (comments.length === 0) return <Typography variant="body2" color="text.secondary">No comments.</Typography>;
+
+    return (
+        <Box sx={{ pl: 2, borderLeft: 2, borderColor: 'divider' }}>
+            {comments.map((c) => (
+                <Box key={c._id} sx={{ mb: 1 }}>
+                    <Typography variant="caption" sx={{ fontWeight: 'bold' }}>{c.authorName}: </Typography>
+                    <Typography variant="body2" component="span">{c.content}</Typography>
+                </Box>
+            ))}
+        </Box>
     );
 }
