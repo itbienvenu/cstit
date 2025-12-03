@@ -44,8 +44,8 @@ export default function Navbar() {
                         <MenuIcon />
                     </IconButton>
                     <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-                        <Link href="/" style={{ color: 'inherit', textDecoration: 'none' }}>
-                            URCSTIT Blog
+                        <Link href="/" style={{ color: 'inherit', textDecoration: 'none', fontFamily: 'monospace', fontWeight: 'bold' }}>
+                            &gt;_ URCSTIT_BLOG
                         </Link>
                     </Typography>
                     {user ? (
