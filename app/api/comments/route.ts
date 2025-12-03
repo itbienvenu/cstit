@@ -3,6 +3,7 @@ import clientPromise from '@/lib/db';
 import { CommentSchema } from '@/lib/schemas';
 import { getUserFromHeader } from '@/lib/auth';
 import { ObjectId } from 'mongodb';
+import { sendEmail } from '@/lib/email';
 
 export async function GET(request: Request) {
     try {
@@ -15,7 +16,10 @@ export async function GET(request: Request) {
 
         const client = await clientPromise;
         const db = client.db('blog_app');
-        const comments = await db.collection('comments').find({ postId }).sort({ createdAt: 1 }).toArray();
+        const comments = await db.collection('comments')
+            .find({ postId })
+            .sort({ createdAt: 1 }) // Sort by oldest first to build tree easily
+            .toArray();
 
         return NextResponse.json(comments);
     } catch (error) {
@@ -40,6 +44,21 @@ export async function POST(request: Request) {
         const client = await clientPromise;
         const db = client.db('blog_app');
         const newComment = await db.collection('comments').insertOne(result.data);
+
+        // Send Notification if it's a reply
+        if (result.data.parentId) {
+            const parentComment = await db.collection('comments').findOne({ _id: new ObjectId(result.data.parentId) });
+            if (parentComment && parentComment.authorId !== user.id) {
+                const parentAuthor = await db.collection('users').findOne({ _id: new ObjectId(parentComment.authorId) });
+                if (parentAuthor && parentAuthor.email) {
+                    await sendEmail(
+                        parentAuthor.email,
+                        'New Reply to your comment',
+                        `Hello ${parentAuthor.name},\n\n${user.name} replied to your comment: "${result.data.content}"\n\nCheck it out on the blog!`
+                    );
+                }
+            }
+        }
 
         return NextResponse.json({ ...result.data, _id: newComment.insertedId }, { status: 201 });
     } catch (error) {
@@ -104,8 +123,19 @@ export async function DELETE(request: Request) {
             return NextResponse.json({ error: 'Comment not found' }, { status: 404 });
         }
 
-        // Allow author or super_admin to delete
-        if (comment.authorId !== user.id && user.role !== 'super_admin') {
+        // Check permissions: Author of comment, Super Admin, or Author of the Post
+        let isAuthorized = false;
+        if (comment.authorId === user.id || user.role === 'super_admin') {
+            isAuthorized = true;
+        } else {
+            // Check if user is the author of the post
+            const post = await db.collection('posts').findOne({ _id: new ObjectId(comment.postId) });
+            if (post && post.authorId === user.id) {
+                isAuthorized = true;
+            }
+        }
+
+        if (!isAuthorized) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
         }
 

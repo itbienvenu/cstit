@@ -67,27 +67,12 @@ export default function AdminDashboard() {
 
     const fetchMyPosts = React.useCallback(async () => {
         const token = localStorage.getItem('token');
-        // We can filter posts by author on the client side for now, or add an API query param
-        // Let's fetch all posts and filter (not efficient for large scale but fine for MVP)
-        // Or better, let's update GET /api/posts to allow filtering by authorId if needed, 
-        // but for now let's just fetch all and filter client side since we don't have a specific route yet.
-        // Actually, let's just fetch all posts and filter by current user id.
         const res = await fetch('/api/posts', {
             headers: { Authorization: `Bearer ${token}` },
         });
         if (res.ok) {
             const allPosts = await res.json();
             const user = JSON.parse(localStorage.getItem('user') || '{}');
-            // The user object in local storage might not have the ID if we didn't save it properly or if it's different format.
-            // Let's check how we saved it. We saved { name, email, role } in login route, but token has ID.
-            // We need the ID to filter. 
-            // Let's decode token or fetch user profile. 
-            // For simplicity, let's assume we can filter by authorName if unique enough, or just show all for admin?
-            // The request is "he can not the all post that he create".
-            // Let's decode the token to get the ID or fetch "me".
-            // We'll rely on the name for now if ID isn't easily available without decoding lib, 
-            // OR we can fetch /api/auth/me if we had it.
-            // Let's just filter by authorName which we have in local storage user object.
             const myOwnPosts = allPosts.filter((p: any) => p.authorName === user.name);
             setMyPosts(myOwnPosts);
         }
@@ -275,20 +260,39 @@ export default function AdminDashboard() {
 function AdminPostComments({ postId }: { postId: string }) {
     const [comments, setComments] = React.useState<any[]>([]);
 
-    React.useEffect(() => {
+    const fetchComments = React.useCallback(() => {
         fetch(`/api/comments?postId=${postId}`)
             .then(res => res.json())
             .then(data => setComments(data));
     }, [postId]);
+
+    React.useEffect(() => {
+        fetchComments();
+    }, [fetchComments]);
+
+    const handleDeleteComment = async (commentId: string) => {
+        if (!confirm('Delete this comment?')) return;
+        const token = localStorage.getItem('token');
+        const res = await fetch(`/api/comments?commentId=${commentId}`, {
+            method: 'DELETE',
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) fetchComments();
+    };
 
     if (comments.length === 0) return <Typography variant="body2" color="text.secondary">No comments.</Typography>;
 
     return (
         <Box sx={{ pl: 2, borderLeft: 2, borderColor: 'divider' }}>
             {comments.map((c) => (
-                <Box key={c._id} sx={{ mb: 1 }}>
-                    <Typography variant="caption" sx={{ fontWeight: 'bold' }}>{c.authorName}: </Typography>
-                    <Typography variant="body2" component="span">{c.content}</Typography>
+                <Box key={c._id} sx={{ mb: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Box>
+                        <Typography variant="caption" sx={{ fontWeight: 'bold' }}>{c.authorName}: </Typography>
+                        <Typography variant="body2" component="span">{c.content}</Typography>
+                    </Box>
+                    <IconButton size="small" color="error" onClick={() => handleDeleteComment(c._id)}>
+                        <DeleteIcon fontSize="small" />
+                    </IconButton>
                 </Box>
             ))}
         </Box>

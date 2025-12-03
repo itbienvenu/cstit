@@ -17,12 +17,19 @@ export const LoginSchema = z.object({
     password: z.string(),
 });
 
+export const ReactionEnum = z.enum(['like', 'love', 'haha', 'wow', 'sad', 'angry']);
+
 export const PostSchema = z.object({
     title: z.string().min(3, "Title must be at least 3 characters"),
     description: z.string().min(10, "Description must be at least 10 characters"),
-    authorId: z.string(), // ObjectId as string
+    authorId: z.string(),
     authorName: z.string(),
     createdAt: z.date().default(() => new Date()),
+    reactions: z.array(z.object({
+        userId: z.string(),
+        userName: z.string(),
+        type: ReactionEnum
+    })).default([]),
 });
 
 export const CommentSchema = z.object({
@@ -30,9 +37,16 @@ export const CommentSchema = z.object({
     authorId: z.string(),
     authorName: z.string(),
     postId: z.string(),
+    parentId: z.string().optional().nullable(), // For nested replies
     createdAt: z.date().default(() => new Date()),
+    reactions: z.array(z.object({
+        userId: z.string(),
+        userName: z.string(),
+        type: ReactionEnum
+    })).default([]),
 });
 
 export type User = z.infer<typeof UserSchema>;
 export type Post = z.infer<typeof PostSchema>;
 export type Comment = z.infer<typeof CommentSchema>;
+export type ReactionType = z.infer<typeof ReactionEnum>;
