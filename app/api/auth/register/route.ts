@@ -7,11 +7,6 @@ export async function POST(request: Request) {
     try {
         const body = await request.json();
 
-        // Default role is user, but we should allow specifying it if needed (though usually controlled)
-        // For now, let's assume registration is for 'user' role mostly.
-        // If someone tries to register as admin, we might want to block that or require approval.
-        // The prompt says: "on create the account we will send the notificatoina to class reps to confirm them"
-
         const result = UserSchema.safeParse(body);
 
         if (!result.success) {

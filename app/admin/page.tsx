@@ -18,8 +18,13 @@ import {
     TableRow,
     IconButton,
     Chip,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
 import CheckIcon from '@mui/icons-material/Check';
 import BlockIcon from '@mui/icons-material/Block';
 import Navbar from '@/components/Navbar';
@@ -53,6 +58,9 @@ export default function AdminDashboard() {
     const [description, setDescription] = React.useState('');
     const [users, setUsers] = React.useState<any[]>([]);
     const [myPosts, setMyPosts] = React.useState<any[]>([]);
+    const [editingPost, setEditingPost] = React.useState<any>(null);
+    const [editTitle, setEditTitle] = React.useState('');
+    const [editDescription, setEditDescription] = React.useState('');
     const router = useRouter();
 
     const fetchUsers = React.useCallback(async () => {
@@ -136,6 +144,50 @@ export default function AdminDashboard() {
 
         if (res.ok) {
             fetchUsers();
+        }
+    };
+
+    const handleDeletePost = async (postId: string) => {
+        if (!confirm('Are you sure you want to delete this post?')) return;
+        const token = localStorage.getItem('token');
+        const res = await fetch(`/api/posts?id=${postId}`, {
+            method: 'DELETE',
+            headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (res.ok) {
+            fetchMyPosts();
+        } else {
+            alert('Failed to delete post');
+        }
+    };
+
+    const openEditDialog = (post: any) => {
+        setEditingPost(post);
+        setEditTitle(post.title);
+        setEditDescription(post.description);
+    };
+
+    const handleUpdatePost = async () => {
+        const token = localStorage.getItem('token');
+        const res = await fetch('/api/posts', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+                _id: editingPost._id,
+                title: editTitle,
+                description: editDescription,
+            }),
+        });
+
+        if (res.ok) {
+            setEditingPost(null);
+            fetchMyPosts();
+        } else {
+            alert('Failed to update post');
         }
     };
 
@@ -238,7 +290,17 @@ export default function AdminDashboard() {
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                         {myPosts.map((post) => (
                             <Paper key={post._id} sx={{ p: 2 }}>
-                                <Typography variant="h6">{post.title}</Typography>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <Typography variant="h6">{post.title}</Typography>
+                                    <Box>
+                                        <IconButton onClick={() => openEditDialog(post)} color="primary">
+                                            <EditIcon />
+                                        </IconButton>
+                                        <IconButton onClick={() => handleDeletePost(post._id)} color="error">
+                                            <DeleteIcon />
+                                        </IconButton>
+                                    </Box>
+                                </Box>
                                 <Typography variant="body2" color="text.secondary" gutterBottom>
                                     {new Date(post.createdAt).toLocaleDateString()}
                                 </Typography>
@@ -253,6 +315,32 @@ export default function AdminDashboard() {
                     </Box>
                 </CustomTabPanel>
             </Container>
+
+            <Dialog open={Boolean(editingPost)} onClose={() => setEditingPost(null)} fullWidth maxWidth="sm">
+                <DialogTitle>Edit Announcement</DialogTitle>
+                <DialogContent>
+                    <TextField
+                        fullWidth
+                        label="Title"
+                        margin="normal"
+                        value={editTitle}
+                        onChange={(e) => setEditTitle(e.target.value)}
+                    />
+                    <TextField
+                        fullWidth
+                        label="Description"
+                        margin="normal"
+                        multiline
+                        rows={4}
+                        value={editDescription}
+                        onChange={(e) => setEditDescription(e.target.value)}
+                    />
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setEditingPost(null)}>Cancel</Button>
+                    <Button onClick={handleUpdatePost} variant="contained">Update</Button>
+                </DialogActions>
+            </Dialog>
         </>
     );
 }

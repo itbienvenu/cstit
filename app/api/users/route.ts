@@ -40,8 +40,6 @@ export async function PUT(request: Request) {
         const client = await clientPromise;
         const db = client.db('blog_app');
 
-        // Only super_admin can update roles to super_admin or class_rep?
-        // For now allow class_rep to update users (confirm them).
 
         await db.collection('users').updateOne(
             { _id: new ObjectId(_id) },

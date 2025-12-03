@@ -55,12 +55,31 @@ const REACTION_ICONS: Record<string, React.ReactNode> = {
 
 export default function PostList({ initialPosts }: { initialPosts: Post[] }) {
     const [posts, setPosts] = React.useState(initialPosts);
+    const [searchQuery, setSearchQuery] = React.useState('');
+
+    const filteredPosts = posts.filter(post =>
+        post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        post.description.toLowerCase().includes(searchQuery.toLowerCase())
+    );
 
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, p: 3, maxWidth: 800, mx: 'auto' }}>
-            {posts.map((post: any) => (
+            <TextField
+                fullWidth
+                label="Search Announcements"
+                variant="outlined"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                sx={{ mb: 2 }}
+            />
+            {filteredPosts.map((post: any) => (
                 <PostCard key={post._id} post={post} />
             ))}
+            {filteredPosts.length === 0 && (
+                <Typography align="center" color="text.secondary">
+                    No announcements found.
+                </Typography>
+            )}
         </Box>
     );
 }

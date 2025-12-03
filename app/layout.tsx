@@ -30,6 +30,10 @@ export const metadata: Metadata = {
   },
 };
 
+import Footer from "@/components/Footer";
+
+// ... imports
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -39,9 +43,12 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <ThemeRegistry>
-          <main className="min-h-screen bg-gray-50">
-            {children}
-          </main>
+          <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+            <main className="min-h-screen bg-gray-50" style={{ flexGrow: 1, minHeight: 0 }}>
+              {children}
+            </main>
+            <Footer />
+          </div>
         </ThemeRegistry>
       </body>
     </html>

@@ -37,3 +37,75 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Failed to create post' }, { status: 500 });
     }
 }
+
+export async function PUT(request: Request) {
+    try {
+        const user: any = await getUserFromHeader();
+        if (!user || (user.role !== 'class_rep' && user.role !== 'super_admin')) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const body = await request.json();
+        const { _id, title, description } = body;
+
+        if (!_id || !title || !description) {
+            return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
+        }
+
+        const client = await clientPromise;
+        const db = client.db('blog_app');
+        const { ObjectId } = require('mongodb');
+
+        const query: any = { _id: new ObjectId(_id) };
+        if (user.role !== 'super_admin') {
+            query.authorId = user.id;
+        }
+
+        const updateResult = await db.collection('posts').updateOne(query, {
+            $set: { title, description, updatedAt: new Date() }
+        });
+
+        if (updateResult.matchedCount === 0) {
+            return NextResponse.json({ error: 'Post not found or unauthorized' }, { status: 404 });
+        }
+
+        return NextResponse.json({ message: 'Post updated' });
+    } catch (error) {
+        return NextResponse.json({ error: 'Failed to update post' }, { status: 500 });
+    }
+}
+
+export async function DELETE(request: Request) {
+    try {
+        const user: any = await getUserFromHeader();
+        if (!user || (user.role !== 'class_rep' && user.role !== 'super_admin')) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const { searchParams } = new URL(request.url);
+        const id = searchParams.get('id');
+
+        if (!id) {
+            return NextResponse.json({ error: 'Missing id' }, { status: 400 });
+        }
+
+        const client = await clientPromise;
+        const db = client.db('blog_app');
+        const { ObjectId } = require('mongodb');
+
+        const query: any = { _id: new ObjectId(id) };
+        if (user.role !== 'super_admin') {
+            query.authorId = user.id;
+        }
+
+        const deleteResult = await db.collection('posts').deleteOne(query);
+
+        if (deleteResult.deletedCount === 0) {
+            return NextResponse.json({ error: 'Post not found or unauthorized' }, { status: 404 });
+        }
+
+        return NextResponse.json({ message: 'Post deleted' });
+    } catch (error) {
+        return NextResponse.json({ error: 'Failed to delete post' }, { status: 500 });
+    }
+}
