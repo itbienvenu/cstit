@@ -12,7 +12,13 @@ export async function GET() {
 
         const client = await clientPromise;
         const db = client.db('blog_app');
-        const users = await db.collection('users').find({}).toArray();
+
+        const query: any = {};
+        if (user.role !== 'super_admin') {
+            query.organizationId = user.organizationId;
+        }
+
+        const users = await db.collection('users').find(query).toArray();
 
         // Don't return passwords
         const safeUsers = users.map(({ password, ...u }) => u);

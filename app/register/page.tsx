@@ -25,12 +25,13 @@ export default function SignUp() {
         const email = data.get('email');
         const password = data.get('password');
         const name = data.get('firstName') + ' ' + data.get('lastName');
+        const classCode = data.get('classCode');
 
         try {
             const res = await fetch('/api/auth/register', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password, name }),
+                body: JSON.stringify({ email, password, name, classCode }),
             });
 
             const json = await res.json();
@@ -99,6 +100,17 @@ export default function SignUp() {
                                     label="Email Address"
                                     name="email"
                                     autoComplete="email"
+                                />
+                            </Grid>
+                            <Grid size={{ xs: 12 }}>
+                                <TextField
+                                    required
+                                    fullWidth
+                                    name="classCode"
+                                    label="Class Code"
+                                    type="text"
+                                    id="classCode"
+                                    helperText="Enter the code provided by your Class Representative"
                                 />
                             </Grid>
                             <Grid size={{ xs: 12 }}>

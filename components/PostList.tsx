@@ -61,10 +61,21 @@ export default function PostList({ initialPosts }: { initialPosts: Post[] }) {
     const [posts, setPosts] = React.useState(initialPosts);
     const [searchQuery, setSearchQuery] = React.useState('');
 
-    const filteredPosts = posts.filter(post =>
-        post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        post.description.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const filteredPosts = posts.filter(post => {
+        const matchesSearch = post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            post.description.toLowerCase().includes(searchQuery.toLowerCase());
+
+        // If searching with "code:XYZ", filter by code. Otherwise search text.
+        // Or simpler: We can parse the search query. But let's just use text search for now as the user said "filter announcements on from his class".
+        // Actually, let's look for exact match if search query looks like a code (uppercase, no spaces)? 
+        // Or better, let's just filter by text, and if the post has className/code included in text or hidden fields it works.
+        // But wait, the backend handles strict classCode filtering via query param. Client side filtering is supplemental.
+
+        const matchesClassCode = post.classCode?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            post.className?.toLowerCase().includes(searchQuery.toLowerCase());
+
+        return matchesSearch || matchesClassCode;
+    });
 
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, p: 3, maxWidth: 800, mx: 'auto' }}>

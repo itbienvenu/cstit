@@ -25,8 +25,8 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
         }
 
-        if (!user.isConfirmed) {
-            return NextResponse.json({ error: 'Account not confirmed yet' }, { status: 403 });
+        if (user.status !== 'active') {
+            return NextResponse.json({ error: 'Account is pending approval or inactive' }, { status: 403 });
         }
 
         if (user.isBlacklisted) {
@@ -39,9 +39,20 @@ export async function POST(request: Request) {
             email: user.email,
             name: user.name,
             role: user.role,
+            organizationId: user.organizationId,
         });
 
-        return NextResponse.json({ token, user: { id: user._id.toString(), name: user.name, email: user.email, role: user.role } });
+        return NextResponse.json({
+            token,
+            user: {
+                id: user._id.toString(),
+                name: user.name,
+                email: user.email,
+                role: user.role,
+                organizationId: user.organizationId,
+                status: user.status
+            }
+        });
     } catch (error) {
         return NextResponse.json({ error: 'Failed to login' }, { status: 500 });
     }

@@ -1,41 +1,65 @@
 import { NextResponse } from 'next/server';
 import clientPromise from '@/lib/db';
-import { UserSchema, RoleEnum } from '@/lib/schemas';
+import { RegisterSchema } from '@/lib/schemas';
 import { hashPassword } from '@/lib/auth';
+import { getOrganizationByCode } from '@/lib/cache';
 
 export async function POST(request: Request) {
     try {
         const body = await request.json();
-
-        const result = UserSchema.safeParse(body);
+        const result = RegisterSchema.safeParse(body);
 
         if (!result.success) {
             return NextResponse.json({ error: result.error.issues }, { status: 400 });
         }
 
+        const { name, email, password, classCode } = result.data;
+
         const client = await clientPromise;
         const db = client.db('blog_app');
 
-        const existingUser = await db.collection('users').findOne({ email: result.data.email });
+        // 1. Check if user already exists
+        const existingUser = await db.collection('users').findOne({ email });
         if (existingUser) {
             return NextResponse.json({ error: 'User already exists' }, { status: 409 });
         }
 
-        const hashedPassword = await hashPassword(result.data.password);
+        let organizationId = null;
+        let role = 'student'; // Default role
+        let status = 'pending'; // Default status for students
+
+        // 2. Validate Class Code if provided (Mandatory for students)
+        if (classCode) {
+            const org: any = await getOrganizationByCode(classCode);
+            if (!org) {
+                return NextResponse.json({ error: 'Invalid Class Code' }, { status: 400 });
+            }
+            organizationId = org._id.toString();
+        } else {
+            return NextResponse.json({ error: 'Class Code is required' }, { status: 400 });
+        }
+
+        // 3. Create User
+        const hashedPassword = await hashPassword(password);
         const newUser = {
-            ...result.data,
+            name,
+            email,
             password: hashedPassword,
-            isConfirmed: false, // Explicitly false until confirmed
+            role,
+            organizationId,
+            status, // 'pending' -> waiting for Class Rep approval
+            isBlacklisted: false,
             createdAt: new Date(),
         };
 
         await db.collection('users').insertOne(newUser);
 
-        // TODO: Send notification to class reps (mocked for now)
-        console.log('Notification sent to class reps to confirm user:', newUser.email);
+        return NextResponse.json({
+            message: 'Registration successful. Waiting for Class Representative approval.',
+        }, { status: 201 });
 
-        return NextResponse.json({ message: 'User registered successfully. Please wait for confirmation.' }, { status: 201 });
     } catch (error) {
+        console.error('Registration error:', error);
         return NextResponse.json({ error: 'Failed to register user' }, { status: 500 });
     }
 }

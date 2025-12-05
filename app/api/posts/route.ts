@@ -4,11 +4,29 @@ import { PostSchema } from '@/lib/schemas';
 import { getUserFromHeader } from '@/lib/auth';
 import { sendEmail, generateAnnouncementEmail } from '@/lib/email';
 
-export async function GET() {
+export async function GET(request: Request) {
     try {
+        const { searchParams } = new URL(request.url);
+        const classCode = searchParams.get('classCode');
+
         const client = await clientPromise;
         const db = client.db('blog_app');
-        const posts = await db.collection('posts').find({}).sort({ createdAt: -1 }).toArray();
+
+        const query: any = {};
+
+        if (classCode) {
+            // lookup organization by code
+            const org = await db.collection('organizations').findOne({ code: classCode });
+            if (org) {
+                // If org found, filter posts by its ID
+                query.organizationId = org._id.toString();
+            } else {
+                // If class code invalid/not found, return empty list immediately
+                return NextResponse.json([]);
+            }
+        }
+
+        const posts = await db.collection('posts').find(query).sort({ createdAt: -1 }).toArray();
         return NextResponse.json(posts);
     } catch (error) {
         return NextResponse.json({ error: 'Failed to fetch posts' }, { status: 500 });
@@ -24,22 +42,47 @@ export async function POST(request: Request) {
 
         const body = await request.json();
         const { notifyUserIds } = body;
-        const result = PostSchema.safeParse({ ...body, authorId: user.id, authorName: user.name });
+
+        const client = await clientPromise;
+        const db = client.db('blog_app');
+        const { ObjectId } = require('mongodb');
+
+        // Fetch user's organization details to save with post
+        let className, classCode;
+        if (user.organizationId) {
+            const org = await db.collection('organizations').findOne({ _id: new ObjectId(user.organizationId) });
+            if (org) {
+                className = org.name;
+                classCode = org.code;
+            }
+        }
+
+        const result = PostSchema.safeParse({
+            ...body,
+            authorId: user.id,
+            authorName: user.name,
+            organizationId: user.organizationId,
+            className,
+            classCode
+        });
 
         if (!result.success) {
             return NextResponse.json({ error: result.error.issues }, { status: 400 });
         }
 
-        const client = await clientPromise;
-        const db = client.db('blog_app');
         const newPost = await db.collection('posts').insertOne(result.data);
 
-        // Handle Email Notifications
+        // Handle Email Notifications - Scope to Org
         if (notifyUserIds && Array.isArray(notifyUserIds) && notifyUserIds.length > 0) {
-            const { ObjectId } = require('mongodb');
-            const usersToNotify = await db.collection('users').find({
+            // Ensure we only notify users in the same org (unless super_admin)
+            const query: any = {
                 _id: { $in: notifyUserIds.map((id: string) => new ObjectId(id)) }
-            }).toArray();
+            };
+            if (user.role !== 'super_admin') {
+                query.organizationId = user.organizationId;
+            }
+
+            const usersToNotify = await db.collection('users').find(query).toArray();
 
             const emailHtml = generateAnnouncementEmail(result.data.title, result.data.description, user.name);
 

@@ -1,61 +1,100 @@
-import clientPromise from '@/lib/db';
+'use client';
+
+import * as React from 'react';
 import PostList from '@/components/PostList';
 import Navbar from '@/components/Navbar';
-import { Box, Typography } from '@mui/material';
+import { Box, Typography, Container, CircularProgress, Alert, TextField, Button } from '@mui/material';
 import { Post } from '@/lib/schemas';
+import { useRouter } from 'next/navigation';
 
-export const dynamic = 'force-dynamic';
+export default function Home() {
+  const [posts, setPosts] = React.useState<Post[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState('');
+  const [classCodeFilter, setClassCodeFilter] = React.useState('');
+  const router = useRouter();
 
-async function getPosts() {
-  try {
-    const client = await clientPromise;
-    const db = client.db('blog_app');
-    const posts = await db.collection('posts').find({}).sort({ createdAt: -1 }).toArray();
-    // Serialize ObjectId and Date
-    return posts.map(post => ({
-      ...post,
-      _id: post._id.toString(),
-      createdAt: post.createdAt.toISOString(), // Convert date to string for client component
-    }));
-  } catch (error) {
-    console.error('Failed to fetch posts:', error);
-    return [];
-  }
-}
+  const fetchPosts = React.useCallback(async (code: string = '') => {
+    setLoading(true);
+    const token = localStorage.getItem('token');
+    const headers: any = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
 
-export default async function Home() {
-  const posts = await getPosts();
+    try {
+      const url = code ? `/api/posts?classCode=${code}` : '/api/posts';
+      const res = await fetch(url, { headers });
 
-  const jsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'Blog',
-    name: 'URCSTIT Class Announcements',
-    description: 'Latest updates and announcements for the class.',
-    url: 'http://localhost:3000',
-    blogPost: posts.map((post: any) => ({
-      '@type': 'BlogPosting',
-      headline: post.title,
-      description: post.description,
-      author: {
-        '@type': 'Person',
-        name: post.authorName,
-      },
-      datePublished: post.createdAt,
-    })),
+      if (res.ok) {
+        const data = await res.json();
+        setPosts(data);
+        setError('');
+      } else {
+        console.error('Failed to load');
+        setError('Failed to load announcements.');
+      }
+    } catch (err) {
+      console.error(err);
+      setError('An error occurred.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    fetchPosts();
+  }, [fetchPosts]);
+
+  const handleFilter = (e: React.FormEvent) => {
+    e.preventDefault();
+    fetchPosts(classCodeFilter);
   };
 
   return (
     <main>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
       <Navbar />
-      <Box sx={{ p: 4 }}>
-        <Typography variant="h3" component="h1" gutterBottom align="center" sx={{ fontWeight: 'bold', mb: 4 }}>
-          Latest Announcements
-        </Typography>
-        <PostList initialPosts={posts as unknown as Post[]} />
+      <Box sx={{ p: 4, minHeight: '80vh' }}>
+        <Container maxWidth="md">
+          <Typography variant="h3" component="h1" gutterBottom align="center" sx={{ fontWeight: 'bold', mb: 4 }}>
+            Class Announcements
+          </Typography>
+
+          <Box component="form" onSubmit={handleFilter} sx={{ display: 'flex', gap: 2, mb: 4, justifyContent: 'center' }}>
+            <TextField
+              label="Enter Class Code (e.g., CS101)"
+              variant="outlined"
+              size="small"
+              value={classCodeFilter}
+              onChange={(e) => setClassCodeFilter(e.target.value)}
+              sx={{ bgcolor: 'background.paper', width: '300px' }}
+            />
+            <Button type="submit" variant="contained" size="large">
+              Filter
+            </Button>
+            {classCodeFilter && (
+              <Button variant="text" onClick={() => { setClassCodeFilter(''); fetchPosts(''); }}>
+                Clear
+              </Button>
+            )}
+          </Box>
+
+          {loading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+              <CircularProgress />
+            </Box>
+          ) : error ? (
+            <Alert severity="info" sx={{ mt: 2 }}>{error}</Alert>
+          ) : (
+            <PostList initialPosts={posts} />
+          )}
+
+          {!loading && posts.length === 0 && !error && (
+            <Typography align="center" sx={{ mt: 4, color: 'text.secondary' }}>
+              No announcements yet for your class.
+            </Typography>
+          )}
+        </Container>
       </Box>
     </main>
   );

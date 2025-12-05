@@ -72,6 +72,14 @@ export default function AdminDashboard() {
     const [editingPost, setEditingPost] = React.useState<any>(null);
     const [editTitle, setEditTitle] = React.useState('');
     const [editDescription, setEditDescription] = React.useState('');
+    const [currentUser, setCurrentUser] = React.useState<any>(null);
+
+    // Create Class State
+    const [className, setClassName] = React.useState('');
+    const [classCode, setClassCode] = React.useState('');
+    const [repName, setRepName] = React.useState('');
+    const [repEmail, setRepEmail] = React.useState('');
+    const [repPassword, setRepPassword] = React.useState('');
 
     // Undo / Snackbar State
     const [snackbarOpen, setSnackbarOpen] = React.useState(false);
@@ -122,6 +130,7 @@ export default function AdminDashboard() {
         if (!token || (user.role !== 'class_rep' && user.role !== 'super_admin')) {
             router.push('/login');
         } else {
+            setCurrentUser(user);
             fetchUsers();
             fetchMyPosts();
         }
@@ -151,6 +160,43 @@ export default function AdminDashboard() {
             fetchMyPosts(); // Refresh my posts after creating a new one
         } else {
             alert('Failed to create post');
+        }
+    };
+
+    const handleCreateClass = async (e: React.FormEvent) => {
+        e.preventDefault();
+        const token = localStorage.getItem('token');
+
+        try {
+            const res = await fetch('/api/admin/classes', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                    className,
+                    classCode,
+                    repName,
+                    repEmail,
+                    repPassword
+                }),
+            });
+
+            const data = await res.json();
+
+            if (res.ok) {
+                alert('Class & Class Rep created successfully!');
+                setClassName('');
+                setClassCode('');
+                setRepName('');
+                setRepEmail('');
+                setRepPassword('');
+            } else {
+                alert(data.error || 'Failed to create class');
+            }
+        } catch (error) {
+            alert('An error occurred');
         }
     };
 
@@ -290,11 +336,12 @@ export default function AdminDashboard() {
                     Admin Dashboard
                 </Typography>
                 <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-                    <Tabs value={value} onChange={handleChange} aria-label="admin tabs">
+                    <Tabs value={value} onChange={handleChange} aria-label="admin tabs" scrollButtons="auto" variant="scrollable">
                         <Tab label="Create Announcement" />
                         <Tab label="Manage Users" />
                         <Tab label="My Posts" />
                         <Tab label="Messages" />
+                        {currentUser?.role === 'super_admin' && <Tab label="Create Class" />}
                     </Tabs>
                 </Box>
                 <CustomTabPanel value={value} index={0}>
@@ -375,14 +422,14 @@ export default function AdminDashboard() {
                                             {user.isConfirmed ? (
                                                 <Chip label="Confirmed" color="success" size="small" />
                                             ) : (
-                                                <Chip label="Pending" color="warning" size="small" />
+                                                <Chip label={user.status || "Pending"} color={user.status === 'active' ? 'success' : 'warning'} size="small" />
                                             )}
                                             {user.isBlacklisted && (
                                                 <Chip label="Blacklisted" color="error" size="small" sx={{ ml: 1 }} />
                                             )}
                                         </TableCell>
                                         <TableCell>
-                                            {!user.isConfirmed && (
+                                            {(!user.isConfirmed && user.status !== 'active') && (
                                                 <IconButton onClick={() => handleUserAction(user._id, 'confirm')} color="success" title="Confirm">
                                                     <CheckIcon />
                                                 </IconButton>
@@ -436,6 +483,65 @@ export default function AdminDashboard() {
                 <CustomTabPanel value={value} index={3}>
                     <AdminMessages />
                 </CustomTabPanel>
+                {currentUser?.role === 'super_admin' && (
+                    <CustomTabPanel value={value} index={4}>
+                        <Paper sx={{ p: 3, maxWidth: 600 }}>
+                            <Typography variant="h6" gutterBottom>
+                                Create New Class & Class Representative
+                            </Typography>
+                            <Box component="form" onSubmit={handleCreateClass}>
+                                <TextField
+                                    fullWidth
+                                    label="Class Name"
+                                    margin="normal"
+                                    value={className}
+                                    onChange={(e) => setClassName(e.target.value)}
+                                    required
+                                    helperText="e.g. Computer Science 2024"
+                                />
+                                <TextField
+                                    fullWidth
+                                    label="Class Code"
+                                    margin="normal"
+                                    value={classCode}
+                                    onChange={(e) => setClassCode(e.target.value)}
+                                    required
+                                    helperText="Unique uppercase code (e.g. CS2024)"
+                                />
+                                <Typography variant="subtitle1" sx={{ mt: 2, mb: 1 }}>Class Representative Details</Typography>
+                                <TextField
+                                    fullWidth
+                                    label="Rep Name"
+                                    margin="normal"
+                                    value={repName}
+                                    onChange={(e) => setRepName(e.target.value)}
+                                    required
+                                />
+                                <TextField
+                                    fullWidth
+                                    label="Rep Email"
+                                    margin="normal"
+                                    type="email"
+                                    value={repEmail}
+                                    onChange={(e) => setRepEmail(e.target.value)}
+                                    required
+                                />
+                                <TextField
+                                    fullWidth
+                                    label="Rep Password"
+                                    margin="normal"
+                                    type="password"
+                                    value={repPassword}
+                                    onChange={(e) => setRepPassword(e.target.value)}
+                                    required
+                                />
+                                <Button type="submit" variant="contained" color="secondary" sx={{ mt: 3 }}>
+                                    Create Class
+                                </Button>
+                            </Box>
+                        </Paper>
+                    </CustomTabPanel>
+                )}
             </Container>
 
             <Dialog open={Boolean(editingPost)} onClose={() => setEditingPost(null)} fullWidth maxWidth="sm">
