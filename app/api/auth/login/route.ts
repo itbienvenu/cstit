@@ -41,7 +41,7 @@ export async function POST(request: Request) {
             role: user.role,
         });
 
-        return NextResponse.json({ token, user: { name: user.name, email: user.email, role: user.role } });
+        return NextResponse.json({ token, user: { id: user._id.toString(), name: user.name, email: user.email, role: user.role } });
     } catch (error) {
         return NextResponse.json({ error: 'Failed to login' }, { status: 500 });
     }
