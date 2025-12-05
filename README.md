@@ -27,6 +27,13 @@ The URCSTIT Blog App serves as a central hub for class announcements and discuss
 
 ## ✨ Key Features
 
+### 🏢 Multi-Tenant SaaS Architecture
+-   **Class Isolation**: Data (posts, students, chats) is isolated by **Class Code**. A "Class" acts as a tenant.
+-   **Hierarchical Structure**:
+   -   **Super Admin**: Creates Classes (`Organization`) and assigns the first Class Representative.
+   -   **Class Representative**: The admin for a specific class. Manages student approvals and posts announcements.
+   -   **Student**: Joins a class using a unique `Class Code`. Can only see data relevant to their class.
+
 ### 🎨 UI/UX & Aesthetic
 -   **Hacker Theme**: Dark glassmorphism interface with neon green (`#00ff00`) accents.
 -   **Animated Background**: Custom `HackerBackground` component featuring:
@@ -37,52 +44,57 @@ The URCSTIT Blog App serves as a central hub for class announcements and discuss
 -   **Hacker Simulator**: A fun, interactive page (`/hacker-simulator`) that simulates a Hollywood-style hacking sequence.
 
 ### 🔐 Authentication & Roles
--   **Secure Auth**: JWT-based authentication with HTTP-only cookie support (via Middleware).
--   **Role-Based Access Control (RBAC)**:
-    -   **Super Admin**: Full system access.
-    -   **Class Rep**: Can manage users (confirm/blacklist) and post announcements.
-    -   **User**: Can view posts, comment, and react.
+-   **Secure Auth**: JWT-based authentication.
+-   **Registration Flow**: Students must provide a valid **Class Code** during signup. Accounts remain `pending` until approved by the Class Rep.
+-   **Role-Based Access Control (RBAC)**: Strictly enforced at both UI and API levels.
 
 ### ⚙️ Admin Dashboard
--   **User Management**:
-    -   Confirm new registrations.
-    -   **Blacklist/Unblacklist**: Block users with a specific reason. Includes email notifications.
-    -   Delete users.
--   **Content Management**: Create, Edit, and Delete announcements.
+-   **Super Admin View**:
+    -   Create new Classes (Organizations).
+    -   Onboard Class Representatives.
+-   **Class Rep View**:
+    -   **Student Management**: Approve/Reject pending registrations.
+    -   **Blacklist**: Block distinct students with reasons sent via email.
+    -   **Announcements**: Create posts scoped specifically to their class.
 -   **Safety Features**:
     -   **Undo Action**: 5-second timer to undo deletions or blacklisting actions.
-    -   **Optimistic Updates**: UI updates immediately for a snappy feel.
+
+### 💬 Chat & Social
+-   **ClassChat**: Real-time messaging restricted to members of the same class.
+-   **Reactions**: Like, Love, Haha, etc., on announcements.
+-   **Comments**: Threaded discussions on posts.
 
 ### 📧 Notifications
 -   Automated emails sent via SMTP when:
     -   A user account is **Blocked** (includes the reason).
     -   A user account is **Restored**.
+    -   High-priority announcements are posted (optional).
 
 ## 📂 Folder Structure
 
 ```
 URCSTIT/blog_app/
 ├── app/                    # Next.js App Router
-│   ├── admin/              # Admin Dashboard page
-│   ├── api/                # API Routes (posts, users, auth, etc.)
-│   ├── hacker-simulator/   # "Become a Hacker" page
+│   ├── admin/              # Dashboard (Super Admin & Class Rep views)
+│   ├── api/                # API Routes (posts, users, auth, classes, etc.)
+│   ├── chats/              # Real-time chat interface
+│   ├── docs/               # Documentation page
 │   ├── login/              # Login page
-│   ├── register/           # Registration page
+│   ├── register/           # Registration with Class Code
 │   ├── globals.css         # Global styles & animations
-│   ├── layout.tsx          # Root layout (includes Background & Navbar)
-│   └── page.tsx            # Home page (Post feed)
+│   ├── layout.tsx          # Root layout
+│   └── page.tsx            # Home page (Public Feed + Class Code Filter)
 ├── components/             # Reusable UI Components
-│   ├── Footer.tsx          # Site footer
-│   ├── HackerBackground.tsx# Animated background component
-│   ├── Navbar.tsx          # Responsive navigation bar
-│   ├── PostCard.tsx        # Individual post display
-│   ├── PostList.tsx        # Feed of posts
-│   └── ThemeRegistry/      # MUI Theme configuration
+│   ├── Footer.tsx          # Site footer with credits
+│   ├── HackerBackground.tsx# Animated background
+│   ├── Navbar.tsx          # Navigation
+│   ├── PostList.tsx        # Smart feed with filtering
+│   └── ...
 ├── lib/                    # Utilities & Helpers
 │   ├── auth.ts             # Auth helpers
 │   ├── db.ts               # MongoDB connection
+│   ├── cache.ts            # LRU Cache for organization lookups
 │   └── email.ts            # Nodemailer configuration
-├── middleware.ts           # Edge middleware for route protection
 └── public/                 # Static assets
 ```
 
@@ -90,8 +102,8 @@ URCSTIT/blog_app/
 
 1.  **Clone the repository**:
     ```bash
-    git clone <repository-url>
-    cd blog_app
+    git clone https://github.com/itbienvenu/cstit.git
+    cd cstit
     ```
 
 2.  **Install dependencies**:
@@ -100,12 +112,13 @@ URCSTIT/blog_app/
     ```
 
 3.  **Configure Environment Variables**:
-    Create a `.env` file in the root directory with the following keys:
+    Create a `.env` file in the root directory:
     ```env
-    MONGODB_URI=mongodb+srv://<username>:<password>@<cluster>.mongodb.net/blog_app
-    JWT_SECRET=your_super_secret_jwt_key
+    MONGODB_URI=mongodb+srv://...
+    JWT_SECRET=your_jwt_secret
     SMTP_EMAIL=your_email@gmail.com
     SMTP_PASSWORD=your_app_specific_password
+    ENCRYPTION_KEY=32_byte_hex_string_for_chat_encryption
     ```
 
 4.  **Run the development server**:
@@ -118,12 +131,9 @@ URCSTIT/blog_app/
 
 ## 🧠 Core Logic Overview
 
--   **Middleware (`middleware.ts`)**: Intercepts requests to protected routes (`/admin`, `/api/posts` [POST/DELETE]). Verifies the JWT token and checks user roles before allowing access.
--   **Theming (`ThemeRegistry`)**: Wraps the application in a custom MUI Theme Provider. It overrides default MUI styles to enforce the dark, neon, sharp-edged "hacker" look.
--   **API Routes**:
-    -   `GET /api/posts`: Fetches posts. Supports search queries.
-    -   `PUT /api/users`: Handles user updates (confirm, blacklist). Triggers email sending logic if status changes.
-    -   `DELETE /api/posts`: Soft/Hard deletion logic (handled by frontend delay).
+-   **Filtering**: The Home page (`/`) allows public visitors to filter announcements by **Class Code**. The API performs a strict lookup: `Class Code` -> `Organization ID` -> `Posts`.
+-   **Data Isolation**: All critical data (Posts, Messages, Users) is tagged with an `organizationId`. The API Middleware and Route Handlers automatically filter queries based on the logged-in user's organization.
+-   **Caching**: `lru-cache` is used to store Organization details to minimize database queries during high-traffic filtering.
 
 ---
 *Happy Coding! >_*
