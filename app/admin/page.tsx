@@ -24,7 +24,11 @@ import {
     DialogActions,
     Snackbar,
     Alert,
+    Autocomplete,
+    Checkbox,
 } from '@mui/material';
+import CheckBoxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank';
+import CheckBoxIcon from '@mui/icons-material/CheckBox';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import CheckIcon from '@mui/icons-material/Check';
@@ -32,6 +36,9 @@ import BlockIcon from '@mui/icons-material/Block';
 import RestoreIcon from '@mui/icons-material/Restore';
 import Navbar from '@/components/Navbar';
 import { useRouter } from 'next/navigation';
+
+const icon = <CheckBoxOutlineBlankIcon fontSize="small" />;
+const checkedIcon = <CheckBoxIcon fontSize="small" />;
 
 interface TabPanelProps {
     children?: React.ReactNode;
@@ -60,6 +67,7 @@ export default function AdminDashboard() {
     const [title, setTitle] = React.useState('');
     const [description, setDescription] = React.useState('');
     const [users, setUsers] = React.useState<any[]>([]);
+    const [selectedUsers, setSelectedUsers] = React.useState<any[]>([]);
     const [myPosts, setMyPosts] = React.useState<any[]>([]);
     const [editingPost, setEditingPost] = React.useState<any>(null);
     const [editTitle, setEditTitle] = React.useState('');
@@ -79,12 +87,19 @@ export default function AdminDashboard() {
     const router = useRouter();
 
     const fetchUsers = React.useCallback(async () => {
-        const token = localStorage.getItem('token');
-        const res = await fetch('/api/users', {
-            headers: { Authorization: `Bearer ${token}` },
-        });
-        if (res.ok) {
-            setUsers(await res.json());
+        try {
+            const token = localStorage.getItem('token');
+            const res = await fetch('/api/users', {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setUsers(data);
+            } else {
+                console.error('Failed to fetch users:', res.status, res.statusText);
+            }
+        } catch (error) {
+            console.error('Error fetching users:', error);
         }
     }, []);
 
@@ -121,13 +136,18 @@ export default function AdminDashboard() {
                 'Content-Type': 'application/json',
                 Authorization: `Bearer ${token}`,
             },
-            body: JSON.stringify({ title, description }),
+            body: JSON.stringify({
+                title,
+                description,
+                notifyUserIds: selectedUsers.map(u => u._id)
+            }),
         });
 
         if (res.ok) {
             alert('Post created successfully');
             setTitle('');
             setDescription('');
+            setSelectedUsers([]);
             fetchMyPosts(); // Refresh my posts after creating a new one
         } else {
             alert('Failed to create post');
@@ -299,6 +319,32 @@ export default function AdminDashboard() {
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
                                 required
+                            />
+                            <Autocomplete
+                                multiple
+                                id="checkboxes-tags-demo"
+                                options={users}
+                                disableCloseOnSelect
+                                getOptionLabel={(option) => `${option.name} (${option.email})`}
+                                renderOption={(props, option, { selected }) => (
+                                    <li {...props}>
+                                        <Checkbox
+                                            icon={icon}
+                                            checkedIcon={checkedIcon}
+                                            style={{ marginRight: 8 }}
+                                            checked={selected}
+                                        />
+                                        {option.name} ({option.email})
+                                    </li>
+                                )}
+                                fullWidth
+                                renderInput={(params) => (
+                                    <TextField {...params} label="Notify Users via Email" placeholder="Select users" margin="normal" />
+                                )}
+                                value={selectedUsers}
+                                onChange={(event, newValue) => {
+                                    setSelectedUsers(newValue);
+                                }}
                             />
                             <Button type="submit" variant="contained" sx={{ mt: 2 }}>
                                 Publish

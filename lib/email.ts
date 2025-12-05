@@ -8,7 +8,7 @@ const transporter = nodemailer.createTransport({
     },
 });
 
-export async function sendEmail(to: string, subject: string, text: string) {
+export async function sendEmail(to: string, subject: string, text: string, html?: string) {
     if (!process.env.SMTP_EMAIL || !process.env.SMTP_PASSWORD) {
         console.warn('SMTP credentials not set. Skipping email.');
         return;
@@ -20,9 +20,55 @@ export async function sendEmail(to: string, subject: string, text: string) {
             to,
             subject,
             text,
+            html: html || text,
         });
         console.log(`Email sent to ${to}`);
     } catch (error) {
         console.error('Error sending email:', error);
     }
+}
+
+export function generateAnnouncementEmail(title: string, description: string, authorName: string) {
+    return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <style>
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; margin: 0; padding: 0; }
+            .container { max-width: 600px; margin: 20px auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; }
+            .header h1 { margin: 0; font-size: 28px; letter-spacing: 1px; }
+            .content { padding: 30px; color: #333; line-height: 1.6; }
+            .title { font-size: 22px; font-weight: bold; color: #2d3748; margin-bottom: 15px; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; }
+            .description { font-size: 16px; color: #4a5568; white-space: pre-wrap; }
+            .footer { background-color: #f7fafc; padding: 20px; text-align: center; font-size: 12px; color: #718096; border-top: 1px solid #edf2f7; }
+            .emoji { font-size: 24px; vertical-align: middle; }
+            .btn { display: inline-block; background-color: #667eea; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px; margin-top: 20px; font-weight: bold; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>📢 New Announcement!</h1>
+            </div>
+            <div class="content">
+                <div class="title">${title}</div>
+                <div class="description">
+                    ${description.replace(/\n/g, '<br>')}
+                </div>
+                <p style="margin-top: 30px; font-style: italic; color: #718096;">
+                    Posted by ${authorName} ✍️
+                </p>
+                <div style="text-align: center;">
+                    <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}" class="btn">View in App 🚀</a>
+                </div>
+            </div>
+            <div class="footer">
+                <p>You received this email because you are subscribed to updates from the Blog App.</p>
+                <p>✨ Have a wonderful day! ✨</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    `;
 }

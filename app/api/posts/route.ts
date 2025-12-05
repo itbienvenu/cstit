@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import clientPromise from '@/lib/db';
 import { PostSchema } from '@/lib/schemas';
 import { getUserFromHeader } from '@/lib/auth';
+import { sendEmail, generateAnnouncementEmail } from '@/lib/email';
 
 export async function GET() {
     try {
@@ -22,6 +23,7 @@ export async function POST(request: Request) {
         }
 
         const body = await request.json();
+        const { notifyUserIds } = body;
         const result = PostSchema.safeParse({ ...body, authorId: user.id, authorName: user.name });
 
         if (!result.success) {
@@ -32,8 +34,24 @@ export async function POST(request: Request) {
         const db = client.db('blog_app');
         const newPost = await db.collection('posts').insertOne(result.data);
 
+        // Handle Email Notifications
+        if (notifyUserIds && Array.isArray(notifyUserIds) && notifyUserIds.length > 0) {
+            const { ObjectId } = require('mongodb');
+            const usersToNotify = await db.collection('users').find({
+                _id: { $in: notifyUserIds.map((id: string) => new ObjectId(id)) }
+            }).toArray();
+
+            const emailHtml = generateAnnouncementEmail(result.data.title, result.data.description, user.name);
+
+            // Send emails
+            await Promise.all(usersToNotify.map(u =>
+                sendEmail(u.email, `📢 Announcement: ${result.data.title}`, result.data.description, emailHtml)
+            ));
+        }
+
         return NextResponse.json({ ...result.data, _id: newPost.insertedId }, { status: 201 });
     } catch (error) {
+        console.error("Error creating post:", error);
         return NextResponse.json({ error: 'Failed to create post' }, { status: 500 });
     }
 }

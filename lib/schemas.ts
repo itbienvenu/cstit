@@ -7,7 +7,7 @@ export const UserSchema = z.object({
     email: z.string().email("Invalid email address"),
     password: z.string().min(6, "Password must be at least 6 characters"),
     role: RoleEnum.default('user'),
-    isConfirmed: z.boolean().default(false), // For normal users to be confirmed by class reps
+    isConfirmed: z.boolean().default(false),
     isBlacklisted: z.boolean().default(false),
     createdAt: z.date().default(() => new Date()),
 });
