@@ -46,7 +46,19 @@ export const CommentSchema = z.object({
     })).default([]),
 });
 
+export const MessageSchema = z.object({
+    content: z.string().min(1, "Message cannot be empty"),
+    senderId: z.string(),
+    senderName: z.string(),
+    recipientId: z.string(),
+    postId: z.string(),
+    postTitle: z.string(),
+    createdAt: z.date().default(() => new Date()),
+    isRead: z.boolean().default(false),
+});
+
 export type User = z.infer<typeof UserSchema>;
 export type Post = z.infer<typeof PostSchema>;
 export type Comment = z.infer<typeof CommentSchema>;
+export type Message = z.infer<typeof MessageSchema>;
 export type ReactionType = z.infer<typeof ReactionEnum>;

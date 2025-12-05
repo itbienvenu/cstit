@@ -71,9 +71,13 @@ export default function Navbar() {
                             <Typography variant="body1" sx={{ mr: 2 }}>
                                 Welcome, {user.name}
                             </Typography>
-                            {(user.role === 'class_rep' || user.role === 'super_admin') && (
+                            {(user.role === 'class_rep' || user.role === 'super_admin') ? (
                                 <Button color="inherit" component={Link} href="/admin">
-                                    Dashboard
+                                    Admin Dashboard
+                                </Button>
+                            ) : (
+                                <Button color="inherit" component={Link} href="/dashboard">
+                                    My Dashboard
                                 </Button>
                             )}
                             <Button color="inherit" onClick={handleLogout}>
@@ -113,9 +117,13 @@ export default function Navbar() {
                             <MenuItem key="welcome" disabled>
                                 <Typography variant="body2">User: {user.name}</Typography>
                             </MenuItem>,
-                            (user.role === 'class_rep' || user.role === 'super_admin') && (
+                            (user.role === 'class_rep' || user.role === 'super_admin') ? (
                                 <MenuItem key="dashboard" onClick={() => { handleClose(); router.push('/admin'); }}>
-                                    Dashboard
+                                    Admin Dashboard
+                                </MenuItem>
+                            ) : (
+                                <MenuItem key="dashboard" onClick={() => { handleClose(); router.push('/dashboard'); }}>
+                                    My Dashboard
                                 </MenuItem>
                             ),
                             <MenuItem key="hacker" onClick={() => { handleClose(); router.push('/hacker-simulator'); }}>

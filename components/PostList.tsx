@@ -26,6 +26,10 @@ import SentimentDissatisfiedIcon from '@mui/icons-material/SentimentDissatisfied
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import Tooltip from '@mui/material/Tooltip';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
 import { styled } from '@mui/material/styles';
 import { Post, ReactionType } from '@/lib/schemas';
 
@@ -91,6 +95,9 @@ function PostCard({ post }: { post: any }) {
     const [reactions, setReactions] = React.useState<any[]>(post.reactions || []);
     const [user, setUser] = React.useState<any>(null);
     const [reactionAnchorEl, setReactionAnchorEl] = React.useState<null | HTMLElement>(null);
+
+    const [privateReplyOpen, setPrivateReplyOpen] = React.useState(false);
+    const [privateMessage, setPrivateMessage] = React.useState('');
 
     React.useEffect(() => {
         const userData = localStorage.getItem('user');
@@ -177,6 +184,31 @@ function PostCard({ post }: { post: any }) {
         }
     };
 
+    const handlePrivateReply = async () => {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            alert('You must be logged in to reply privately');
+            return;
+        }
+
+        const res = await fetch('/api/messages', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ content: privateMessage, postId: post._id }),
+        });
+
+        if (res.ok) {
+            alert('Private message sent!');
+            setPrivateMessage('');
+            setPrivateReplyOpen(false);
+        } else {
+            alert('Failed to send message');
+        }
+    };
+
     const userReaction = reactions.find((r: any) => user && r.userId === user.id);
 
     // Build comment tree
@@ -241,6 +273,18 @@ function PostCard({ post }: { post: any }) {
                 <IconButton aria-label="share" onClick={handleShare}>
                     <ShareIcon />
                 </IconButton>
+
+                {user && (
+                    <Button
+                        size="small"
+                        startIcon={<ReplyIcon />}
+                        onClick={() => setPrivateReplyOpen(true)}
+                        sx={{ ml: 1 }}
+                    >
+                        Reply Privately
+                    </Button>
+                )}
+
                 <ExpandMore
                     expand={expanded}
                     onClick={handleExpandClick}
@@ -277,6 +321,32 @@ function PostCard({ post }: { post: any }) {
                     </Box>
                 </CardContent>
             </Collapse>
+
+            <Dialog open={privateReplyOpen} onClose={() => setPrivateReplyOpen(false)} fullWidth maxWidth="sm">
+                <DialogTitle>Reply Privately to {post.authorName}</DialogTitle>
+                <DialogContent>
+                    <Typography variant="body2" color="text.secondary" gutterBottom>
+                        Re: {post.title}
+                    </Typography>
+                    <TextField
+                        autoFocus
+                        margin="dense"
+                        label="Your Message"
+                        fullWidth
+                        multiline
+                        rows={4}
+                        value={privateMessage}
+                        onChange={(e) => setPrivateMessage(e.target.value)}
+                    />
+                    <Typography variant="caption" sx={{ display: 'block', mt: 1, color: 'success.main' }}>
+                        🔒 End-to-End Encrypted
+                    </Typography>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setPrivateReplyOpen(false)}>Cancel</Button>
+                    <Button onClick={handlePrivateReply} variant="contained">Send</Button>
+                </DialogActions>
+            </Dialog>
         </Card>
     );
 }

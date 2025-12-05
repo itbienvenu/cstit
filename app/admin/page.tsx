@@ -294,6 +294,7 @@ export default function AdminDashboard() {
                         <Tab label="Create Announcement" />
                         <Tab label="Manage Users" />
                         <Tab label="My Posts" />
+                        <Tab label="Messages" />
                     </Tabs>
                 </Box>
                 <CustomTabPanel value={value} index={0}>
@@ -432,6 +433,9 @@ export default function AdminDashboard() {
                         )}
                     </Box>
                 </CustomTabPanel>
+                <CustomTabPanel value={value} index={3}>
+                    <AdminMessages />
+                </CustomTabPanel>
             </Container>
 
             <Dialog open={Boolean(editingPost)} onClose={() => setEditingPost(null)} fullWidth maxWidth="sm">
@@ -538,6 +542,63 @@ function AdminPostComments({ postId }: { postId: string }) {
                     </IconButton>
                 </Box>
             ))}
+        </Box>
+    );
+}
+
+function AdminMessages() {
+    const [messages, setMessages] = React.useState<any[]>([]);
+
+    React.useEffect(() => {
+        const token = localStorage.getItem('token');
+        fetch('/api/messages?type=received', {
+            headers: { Authorization: `Bearer ${token}` }
+        })
+            .then(res => res.json())
+            .then(data => setMessages(data));
+    }, []);
+
+    const getRandomColor = (id: string) => {
+        const colors = ['#f28b82', '#fbbc04', '#fff475', '#ccff90', '#a7ffeb', '#cbf0f8', '#aecbfa', '#d7aefb', '#fdcfe8', '#e6c9a8', '#e8eaed'];
+        let hash = 0;
+        for (let i = 0; i < id.length; i++) {
+            hash = id.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        return colors[Math.abs(hash) % colors.length];
+    };
+
+    return (
+        <Box sx={{ columnCount: { xs: 1, sm: 2, md: 3 }, columnGap: 2 }}>
+            {messages.map((msg) => (
+                <Paper
+                    key={msg._id}
+                    sx={{
+                        p: 2,
+                        mb: 2,
+                        breakInside: 'avoid',
+                        backgroundColor: getRandomColor(msg._id),
+                        borderRadius: 2,
+                        position: 'relative'
+                    }}
+                    elevation={3}
+                >
+                    <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>
+                        From: {msg.senderName}
+                    </Typography>
+                    <Typography variant="caption" display="block" color="text.secondary" gutterBottom>
+                        Re: {msg.postTitle}
+                    </Typography>
+                    <Typography variant="body1" sx={{ mt: 1, whiteSpace: 'pre-wrap' }}>
+                        {msg.content}
+                    </Typography>
+                    <Typography variant="caption" sx={{ display: 'block', mt: 2, textAlign: 'right', opacity: 0.7 }}>
+                        {new Date(msg.createdAt).toLocaleString()}
+                    </Typography>
+                </Paper>
+            ))}
+            {messages.length === 0 && (
+                <Typography>No private messages received.</Typography>
+            )}
         </Box>
     );
 }
