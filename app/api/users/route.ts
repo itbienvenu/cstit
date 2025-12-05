@@ -6,7 +6,7 @@ import { ObjectId } from 'mongodb';
 export async function GET() {
     try {
         const user: any = await getUserFromHeader();
-        if (!user || (user.role !== 'class_rep' && user.role !== 'super_admin')) {
+        if (!user) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 

@@ -1,11 +1,4 @@
 import { createTheme } from '@mui/material/styles';
-import { Roboto_Mono } from 'next/font/google';
-
-const robotoMono = Roboto_Mono({
-    weight: ['300', '400', '500', '700'],
-    subsets: ['latin'],
-    display: 'swap',
-});
 
 const theme = createTheme({
     palette: {
@@ -32,7 +25,7 @@ const theme = createTheme({
         },
     },
     typography: {
-        fontFamily: robotoMono.style.fontFamily,
+        fontFamily: "'Roboto Mono', 'Courier New', Courier, monospace",
         h1: { fontWeight: 700, letterSpacing: '-0.02em' },
         h2: { fontWeight: 700, letterSpacing: '-0.02em' },
         h3: { fontWeight: 700, letterSpacing: '-0.02em' },

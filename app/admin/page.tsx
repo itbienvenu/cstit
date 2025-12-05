@@ -558,14 +558,7 @@ function AdminMessages() {
             .then(data => setMessages(data));
     }, []);
 
-    const getRandomColor = (id: string) => {
-        const colors = ['#f28b82', '#fbbc04', '#fff475', '#ccff90', '#a7ffeb', '#cbf0f8', '#aecbfa', '#d7aefb', '#fdcfe8', '#e6c9a8', '#e8eaed'];
-        let hash = 0;
-        for (let i = 0; i < id.length; i++) {
-            hash = id.charCodeAt(i) + ((hash << 5) - hash);
-        }
-        return colors[Math.abs(hash) % colors.length];
-    };
+
 
     return (
         <Box sx={{ columnCount: { xs: 1, sm: 2, md: 3 }, columnGap: 2 }}>
@@ -576,11 +569,12 @@ function AdminMessages() {
                         p: 2,
                         mb: 2,
                         breakInside: 'avoid',
-                        backgroundColor: getRandomColor(msg._id),
+                        backgroundColor: 'transparent',
                         borderRadius: 2,
-                        position: 'relative'
+                        position: 'relative',
+                        border: '1px solid rgba(145, 158, 171, 0.24)'
                     }}
-                    elevation={3}
+                    elevation={0}
                 >
                     <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>
                         From: {msg.senderName}

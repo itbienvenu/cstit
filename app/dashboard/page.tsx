@@ -48,7 +48,7 @@ export default function UserDashboard() {
                 <Grid container spacing={3}>
                     {messages.map((msg) => (
                         <Grid size={{ xs: 12, md: 6 }} key={msg._id}>
-                            <Card sx={{ bgcolor: '#f5f5f5' }}>
+                            <Card sx={{ bgcolor: 'transparent', boxShadow: 'none', border: '1px solid rgba(145, 158, 171, 0.24)' }}>
                                 <CardHeader
                                     avatar={
                                         <Avatar sx={{ bgcolor: 'primary.main' }}>Me</Avatar>

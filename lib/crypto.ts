@@ -1,8 +1,6 @@
 import crypto from 'crypto';
 
 const ALGORITHM = 'aes-256-cbc';
-// Ensure the key is 32 bytes. If ENCRYPTION_KEY is not set or short, we pad or hash it.
-// In production, ENCRYPTION_KEY must be a strong, random 32-byte hex string.
 const SECRET_KEY = process.env.ENCRYPTION_KEY || 'default_secret_key_must_be_changed_in_prod';
 const key = crypto.createHash('sha256').update(String(SECRET_KEY)).digest('base64').substr(0, 32);
 

@@ -57,8 +57,28 @@ export const MessageSchema = z.object({
     isRead: z.boolean().default(false),
 });
 
+export const ConversationSchema = z.object({
+    participants: z.array(z.string()),
+    lastMessage: z.string().optional(),
+    lastMessageAt: z.date().default(() => new Date()),
+    unreadCounts: z.record(z.string(), z.number()).default({}),
+});
+
+export const ChatMessageSchema = z.object({
+    conversationId: z.string(),
+    senderId: z.string(),
+    content: z.string(),
+    createdAt: z.date().default(() => new Date()),
+    readBy: z.array(z.string()).default([]),
+    isEdited: z.boolean().default(false),
+    isDeleted: z.boolean().default(false),
+    deletedFor: z.array(z.string()).default([]), // User IDs for whom the message is deleted
+});
+
 export type User = z.infer<typeof UserSchema>;
 export type Post = z.infer<typeof PostSchema>;
 export type Comment = z.infer<typeof CommentSchema>;
 export type Message = z.infer<typeof MessageSchema>;
+export type Conversation = z.infer<typeof ConversationSchema>;
+export type ChatMessage = z.infer<typeof ChatMessageSchema>;
 export type ReactionType = z.infer<typeof ReactionEnum>;

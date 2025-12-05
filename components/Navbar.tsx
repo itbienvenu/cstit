@@ -71,6 +71,9 @@ export default function Navbar() {
                             <Typography variant="body1" sx={{ mr: 2 }}>
                                 Welcome, {user.name}
                             </Typography>
+                            <Button color="inherit" component={Link} href="/chat" sx={{ mr: 1 }}>
+                                Chat
+                            </Button>
                             {(user.role === 'class_rep' || user.role === 'super_admin') ? (
                                 <Button color="inherit" component={Link} href="/admin">
                                     Admin Dashboard

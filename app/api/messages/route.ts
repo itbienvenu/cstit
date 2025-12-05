@@ -3,7 +3,9 @@ import clientPromise from '@/lib/db';
 import { MessageSchema } from '@/lib/schemas';
 import { getUserFromHeader } from '@/lib/auth';
 import { encrypt, decrypt } from '@/lib/crypto';
+
 import { ObjectId } from 'mongodb';
+import { sendEmail, generatePrivateMessageEmail } from '@/lib/email';
 
 export async function GET(request: Request) {
     try {
@@ -91,6 +93,15 @@ export async function POST(request: Request) {
         }
 
         const newMessage = await db.collection('messages').insertOne(result.data);
+
+
+
+        // Fetch recipient email and send notification
+        const recipient = await db.collection('users').findOne({ _id: new ObjectId(post.authorId) });
+        if (recipient && recipient.email) {
+            const emailHtml = generatePrivateMessageEmail(user.name, post.title, content);
+            await sendEmail(recipient.email, `New Private Message: ${post.title}`, `You have a new private message from ${user.name}`, emailHtml);
+        }
 
         return NextResponse.json({ ...result.data, _id: newMessage.insertedId }, { status: 201 });
     } catch (error) {

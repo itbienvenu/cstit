@@ -72,3 +72,52 @@ export function generateAnnouncementEmail(title: string, description: string, au
     </html>
     `;
 }
+
+export function generatePrivateMessageEmail(senderName: string, postTitle: string, messageContent: string) {
+    return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <style>
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; margin: 0; padding: 0; }
+            .container { max-width: 600px; margin: 20px auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; }
+            .header h1 { margin: 0; font-size: 24px; letter-spacing: 1px; }
+            .content { padding: 30px; color: #333; line-height: 1.6; }
+            .info { background-color: #edf2f7; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #667eea; }
+            .message-box { background-color: #f7fafc; padding: 20px; border-radius: 8px; border: 1px dashed #cbd5e0; font-style: italic; color: #4a5568; }
+            .footer { background-color: #f7fafc; padding: 20px; text-align: center; font-size: 12px; color: #718096; border-top: 1px solid #edf2f7; }
+            .btn { display: inline-block; background-color: #667eea; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px; margin-top: 20px; font-weight: bold; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>🔒 New Private Message</h1>
+            </div>
+            <div class="content">
+                <p>Hello,</p>
+                <p>You have received a new private reply regarding your announcement.</p>
+                
+                <div class="info">
+                    <strong>From:</strong> ${senderName}<br>
+                    <strong>Re:</strong> ${postTitle}
+                </div>
+
+                <div class="message-box">
+                    "${messageContent}"
+                </div>
+
+                <div style="text-align: center;">
+                    <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/admin" class="btn">View in Dashboard 🚀</a>
+                </div>
+            </div>
+            <div class="footer">
+                <p>This is a private message notification from the Blog App.</p>
+                <p>✨ Secure & Confidential ✨</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    `;
+}
