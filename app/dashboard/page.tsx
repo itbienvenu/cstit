@@ -47,7 +47,7 @@ export default function UserDashboard() {
                 </Typography>
                 <Grid container spacing={3}>
                     {messages.map((msg) => (
-                        <Grid item xs={12} md={6} key={msg._id}>
+                        <Grid size={{ xs: 12, md: 6 }} key={msg._id}>
                             <Card sx={{ bgcolor: '#f5f5f5' }}>
                                 <CardHeader
                                     avatar={
@@ -68,7 +68,7 @@ export default function UserDashboard() {
                         </Grid>
                     ))}
                     {messages.length === 0 && (
-                        <Grid item xs={12}>
+                        <Grid size={{ xs: 12 }}>
                             <Paper sx={{ p: 3, textAlign: 'center' }}>
                                 <Typography color="text.secondary">
                                     You haven't sent any private messages yet.
