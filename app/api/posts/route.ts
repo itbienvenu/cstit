@@ -9,6 +9,9 @@ export async function GET(request: Request) {
         const { searchParams } = new URL(request.url);
         const classCode = searchParams.get('classCode');
 
+        const page = parseInt(searchParams.get('page') || '0');
+        const limit = parseInt(searchParams.get('limit') || '0');
+
         const client = await clientPromise;
         const db = client.db('blog_app');
 
@@ -18,15 +21,20 @@ export async function GET(request: Request) {
             // lookup organization by code
             const org = await db.collection('organizations').findOne({ code: classCode });
             if (org) {
-                // If org found, filter posts by its ID
                 query.organizationId = org._id.toString();
             } else {
-                // If class code invalid/not found, return empty list immediately
                 return NextResponse.json([]);
             }
         }
 
-        const posts = await db.collection('posts').find(query).sort({ createdAt: -1 }).toArray();
+        let cursor = db.collection('posts').find(query).sort({ createdAt: -1 });
+
+        if (page > 0 && limit > 0) {
+            const skip = (page - 1) * limit;
+            cursor = cursor.skip(skip).limit(limit);
+        }
+
+        const posts = await cursor.toArray();
         return NextResponse.json(posts);
     } catch (error) {
         return NextResponse.json({ error: 'Failed to fetch posts' }, { status: 500 });

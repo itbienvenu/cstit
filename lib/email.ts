@@ -121,3 +121,50 @@ export function generatePrivateMessageEmail(senderName: string, postTitle: strin
     </html>
     `;
 }
+
+export function generateResetPasswordEmail(resetLink: string) {
+    return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <style>
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; margin: 0; padding: 0; }
+            .container { max-width: 600px; margin: 20px auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+            .header { background: linear-gradient(135deg, #FF416C 0%, #FF4B2B 100%); color: white; padding: 30px; text-align: center; }
+            .header h1 { margin: 0; font-size: 24px; letter-spacing: 1px; }
+            .content { padding: 30px; color: #333; line-height: 1.6; }
+            .alert { background-color: #fff5f5; border-left: 4px solid #fc8181; padding: 15px; margin-bottom: 20px; color: #c53030; }
+            .footer { background-color: #f7fafc; padding: 20px; text-align: center; font-size: 12px; color: #718096; border-top: 1px solid #edf2f7; }
+            .btn { display: inline-block; background-color: #FF416C; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin-top: 20px; font-weight: bold; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>🔑 Password Reset Request</h1>
+            </div>
+            <div class="content">
+                <p>Hello,</p>
+                <p>We received a request to reset the password for your account. If you didn't make this request, you can safely ignore this email.</p>
+                
+                <div class="alert">
+                    This link will expire in 1 hour.
+                </div>
+
+                <div style="text-align: center;">
+                    <a href="${resetLink}" class="btn">Reset Password</a>
+                </div>
+
+                <p style="margin-top: 30px; font-size: 14px;">
+                    Or copy and paste this link into your browser:<br>
+                    <a href="${resetLink}" style="color: #FF416C;">${resetLink}</a>
+                </p>
+            </div>
+            <div class="footer">
+                <p>Secure Account System</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    `;
+}

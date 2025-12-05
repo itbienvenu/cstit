@@ -95,15 +95,14 @@ export default function SignIn() {
                         >
                             Sign In
                         </Button>
-                        <Grid container>
-                            <Grid container>
-                                <Grid>
-                                    <Link href="/register" variant="body2">
-                                        {"Don't have an account? Sign Up"}
-                                    </Link>
-                                </Grid>
-                            </Grid>
-                        </Grid>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
+                            <Link href="/forgot-password" variant="body2">
+                                Forgot password?
+                            </Link>
+                            <Link href="/register" variant="body2">
+                                {"Don't have an account? Sign Up"}
+                            </Link>
+                        </Box>
                     </Box>
                 </Box>
             </Container>

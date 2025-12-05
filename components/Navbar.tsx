@@ -83,6 +83,9 @@ export default function Navbar() {
                                     My Dashboard
                                 </Button>
                             )}
+                            <Button color="inherit" component={Link} href="/profile" sx={{ mr: 1 }}>
+                                Profile
+                            </Button>
                             <Button color="inherit" onClick={handleLogout}>
                                 Logout
                             </Button>
@@ -129,6 +132,12 @@ export default function Navbar() {
                                     My Dashboard
                                 </MenuItem>
                             ),
+                            <MenuItem key="chat" onClick={() => { handleClose(); router.push('/chat'); }}>
+                                Chat
+                            </MenuItem>,
+                            <MenuItem key="profile" onClick={() => { handleClose(); router.push('/profile'); }}>
+                                Profile
+                            </MenuItem>,
                             <MenuItem key="hacker" onClick={() => { handleClose(); router.push('/hacker-simulator'); }}>
                                 BECOME A HACKER
                             </MenuItem>,

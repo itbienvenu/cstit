@@ -18,6 +18,19 @@ const pulse = keyframes`
 
 export default function HackerBackground() {
     const canvasRef = React.useRef<HTMLCanvasElement>(null);
+    const [bubbles, setBubbles] = React.useState<any[]>([]);
+
+    React.useEffect(() => {
+        // Generate bubbles client-side only to avoid hydration mismatch
+        const newBubbles = [...Array(6)].map(() => ({
+            width: 100 + Math.random() * 100,
+            height: 100 + Math.random() * 100,
+            top: `${Math.random() * 100}%`,
+            left: `${Math.random() * 100}%`,
+            duration: 10 + Math.random() * 20
+        }));
+        setBubbles(newBubbles);
+    }, []);
 
     React.useEffect(() => {
         const canvas = canvasRef.current;
@@ -115,18 +128,19 @@ export default function HackerBackground() {
             />
 
             {/* Floating Dashed Bubbles */}
-            {[...Array(6)].map((_, i) => (
+            {/* Floating Dashed Bubbles */}
+            {bubbles.map((bubble, i) => (
                 <Box
                     key={i}
                     sx={{
                         position: 'absolute',
-                        width: 100 + Math.random() * 100,
-                        height: 100 + Math.random() * 100,
+                        width: bubble.width,
+                        height: bubble.height,
                         border: '2px dashed rgba(0, 255, 0, 0.2)',
                         borderRadius: '50%',
-                        top: `${Math.random() * 100}%`,
-                        left: `${Math.random() * 100}%`,
-                        animation: `${float} ${10 + Math.random() * 20}s infinite linear`,
+                        top: bubble.top,
+                        left: bubble.left,
+                        animation: `${float} ${bubble.duration}s infinite linear`,
                         boxShadow: '0 0 15px rgba(0, 255, 0, 0.1)',
                         '&::after': {
                             content: '""',

@@ -485,61 +485,7 @@ export default function AdminDashboard() {
                 </CustomTabPanel>
                 {currentUser?.role === 'super_admin' && (
                     <CustomTabPanel value={value} index={4}>
-                        <Paper sx={{ p: 3, maxWidth: 600 }}>
-                            <Typography variant="h6" gutterBottom>
-                                Create New Class & Class Representative
-                            </Typography>
-                            <Box component="form" onSubmit={handleCreateClass}>
-                                <TextField
-                                    fullWidth
-                                    label="Class Name"
-                                    margin="normal"
-                                    value={className}
-                                    onChange={(e) => setClassName(e.target.value)}
-                                    required
-                                    helperText="e.g. Computer Science 2024"
-                                />
-                                <TextField
-                                    fullWidth
-                                    label="Class Code"
-                                    margin="normal"
-                                    value={classCode}
-                                    onChange={(e) => setClassCode(e.target.value)}
-                                    required
-                                    helperText="Unique uppercase code (e.g. CS2024)"
-                                />
-                                <Typography variant="subtitle1" sx={{ mt: 2, mb: 1 }}>Class Representative Details</Typography>
-                                <TextField
-                                    fullWidth
-                                    label="Rep Name"
-                                    margin="normal"
-                                    value={repName}
-                                    onChange={(e) => setRepName(e.target.value)}
-                                    required
-                                />
-                                <TextField
-                                    fullWidth
-                                    label="Rep Email"
-                                    margin="normal"
-                                    type="email"
-                                    value={repEmail}
-                                    onChange={(e) => setRepEmail(e.target.value)}
-                                    required
-                                />
-                                <TextField
-                                    fullWidth
-                                    label="Rep Password"
-                                    margin="normal"
-                                    type="password"
-                                    value={repPassword}
-                                    onChange={(e) => setRepPassword(e.target.value)}
-                                    required
-                                />
-                                <Button type="submit" variant="contained" color="secondary" sx={{ mt: 3 }}>
-                                    Create Class
-                                </Button>
-                            </Box>
-                        </Paper>
+                        <SuperAdminClasses user={currentUser} />
                     </CustomTabPanel>
                 )}
             </Container>
@@ -667,6 +613,7 @@ function AdminMessages() {
 
 
     return (
+
         <Box sx={{ columnCount: { xs: 1, sm: 2, md: 3 }, columnGap: 2 }}>
             {messages.map((msg) => (
                 <Paper
@@ -699,6 +646,158 @@ function AdminMessages() {
             {messages.length === 0 && (
                 <Typography>No private messages received.</Typography>
             )}
+        </Box>
+    );
+}
+
+function SuperAdminClasses({ user }: { user: any }) {
+    const [classes, setClasses] = React.useState<any[]>([]);
+
+    // Create State
+    const [className, setClassName] = React.useState('');
+    const [classCode, setClassCode] = React.useState('');
+    const [repName, setRepName] = React.useState('');
+    const [repEmail, setRepEmail] = React.useState('');
+    const [repPassword, setRepPassword] = React.useState('');
+
+    // Edit State
+    const [editingClass, setEditingClass] = React.useState<any>(null);
+    const [editName, setEditName] = React.useState('');
+    const [editCode, setEditCode] = React.useState('');
+
+    const fetchClasses = React.useCallback(async () => {
+        const token = localStorage.getItem('token');
+        const res = await fetch('/api/admin/classes', {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.ok) {
+            setClasses(await res.json());
+        }
+    }, []);
+
+    React.useEffect(() => {
+        fetchClasses();
+    }, [fetchClasses]);
+
+    const handleCreateClass = async (e: React.FormEvent) => {
+        e.preventDefault();
+        const token = localStorage.getItem('token');
+
+        try {
+            const res = await fetch('/api/admin/classes', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ className, classCode, repName, repEmail, repPassword }),
+            });
+
+            const data = await res.json();
+            if (res.ok) {
+                alert('Class & Class Rep created successfully!');
+                setClassName(''); setClassCode(''); setRepName(''); setRepEmail(''); setRepPassword('');
+                fetchClasses();
+            } else {
+                alert(data.error || 'Failed to create class');
+            }
+        } catch (error) {
+            alert('An error occurred');
+        }
+    };
+
+    const handleUpdateClass = async () => {
+        const token = localStorage.getItem('token');
+        const res = await fetch('/api/admin/classes', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ _id: editingClass._id, name: editName, code: editCode }),
+        });
+        if (res.ok) {
+            setEditingClass(null);
+            fetchClasses();
+        } else {
+            alert('Failed to update');
+        }
+    };
+
+    const handleDeleteClass = async (id: string) => {
+        if (!confirm('Are you sure? This will delete the class. Users may become orphaned.')) return;
+        const token = localStorage.getItem('token');
+        const res = await fetch(`/api/admin/classes?id=${id}`, {
+            method: 'DELETE',
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+            fetchClasses();
+        } else {
+            alert('Failed to delete');
+        }
+    };
+
+    return (
+        <Box>
+            <Paper sx={{ p: 3, mb: 4, maxWidth: '100%' }}>
+                <Typography variant="h6" gutterBottom>Existing Classes</Typography>
+                <TableContainer>
+                    <Table size="small">
+                        <TableHead>
+                            <TableRow>
+                                <TableCell>Name</TableCell>
+                                <TableCell>Code</TableCell>
+                                <TableCell>Members</TableCell>
+                                <TableCell>Actions</TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            {classes.map((c) => (
+                                <TableRow key={c._id}>
+                                    <TableCell>{c.name}</TableCell>
+                                    <TableCell><Chip label={c.code} size="small" /></TableCell>
+                                    <TableCell>{c.memberCount || 0}</TableCell>
+                                    <TableCell>
+                                        <IconButton size="small" color="primary" onClick={() => {
+                                            setEditingClass(c);
+                                            setEditName(c.name);
+                                            setEditCode(c.code);
+                                        }}>
+                                            <EditIcon fontSize="small" />
+                                        </IconButton>
+                                        <IconButton size="small" color="error" onClick={() => handleDeleteClass(c._id)}>
+                                            <DeleteIcon fontSize="small" />
+                                        </IconButton>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </TableContainer>
+            </Paper>
+
+            <Paper sx={{ p: 3, maxWidth: 600 }}>
+                <Typography variant="h6" gutterBottom>Create New Class</Typography>
+                <Box component="form" onSubmit={handleCreateClass}>
+                    <TextField fullWidth label="Class Name" margin="normal" value={className} onChange={(e) => setClassName(e.target.value)} required />
+                    <TextField fullWidth label="Class Code" margin="normal" value={classCode} onChange={(e) => setClassCode(e.target.value)} required />
+                    <Typography variant="subtitle2" sx={{ mt: 2, mb: 1, color: 'text.secondary' }}>First Class Rep</Typography>
+                    <TextField fullWidth label="Rep Name" margin="normal" size="small" value={repName} onChange={(e) => setRepName(e.target.value)} required />
+                    <TextField fullWidth label="Rep Email" margin="normal" size="small" type="email" value={repEmail} onChange={(e) => setRepEmail(e.target.value)} required />
+                    <TextField fullWidth label="Rep Password" margin="normal" size="small" type="password" value={repPassword} onChange={(e) => setRepPassword(e.target.value)} required />
+                    <Button type="submit" variant="contained" color="secondary" sx={{ mt: 3 }}>Create Class</Button>
+                </Box>
+            </Paper>
+
+            <Dialog open={Boolean(editingClass)} onClose={() => setEditingClass(null)}>
+                <DialogTitle>Edit Class</DialogTitle>
+                <DialogContent>
+                    <TextField autoFocus margin="dense" label="Class Name" fullWidth value={editName} onChange={(e) => setEditName(e.target.value)} />
+                    <TextField margin="dense" label="Class Code" fullWidth value={editCode} onChange={(e) => setEditCode(e.target.value)} />
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setEditingClass(null)}>Cancel</Button>
+                    <Button onClick={handleUpdateClass} variant="contained">Update</Button>
+                </DialogActions>
+            </Dialog>
         </Box>
     );
 }

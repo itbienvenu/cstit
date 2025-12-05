@@ -132,6 +132,39 @@ export default function DocumentationPage() {
   }
 }`}
                                 />
+
+                                <Box sx={{ mt: 4 }} />
+
+                                <Endpoint
+                                    method="POST"
+                                    path="/api/auth/forgot-password"
+                                    description="Initiate password reset via email."
+                                />
+                                <CodeBlock
+                                    code={`// Request Body
+{
+  "email": "user@example.com"
+}`}
+                                />
+
+                                <Endpoint
+                                    method="POST"
+                                    path="/api/auth/reset-password"
+                                    description="Complete password reset with token."
+                                />
+
+                                <Endpoint
+                                    method="PUT"
+                                    path="/api/auth/profile"
+                                    description="Update current user's profile (Authenticated)."
+                                />
+                                <CodeBlock
+                                    code={`// Request Body
+{
+  "name": "New Name",
+  "password": "newSecurePassword" // optional
+}`}
+                                />
                             </Section>
 
                             <Divider sx={{ my: 4 }} />
@@ -146,6 +179,8 @@ export default function DocumentationPage() {
                                 <Typography variant="body2" sx={{ mb: 1 }}><strong>Query Parameters:</strong></Typography>
                                 <ul>
                                     <li><code>classCode</code> (optional): Filter posts by strict class code (e.g., <code>?classCode=CS101</code>).</li>
+                                    <li><code>page</code> (optional): Page number (default: 0 = all).</li>
+                                    <li><code>limit</code> (optional): Items per page (default: 0 = all).</li>
                                 </ul>
 
                                 <Box sx={{ mt: 4 }} />

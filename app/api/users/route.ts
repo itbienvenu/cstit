@@ -3,22 +3,32 @@ import clientPromise from '@/lib/db';
 import { getUserFromHeader } from '@/lib/auth';
 import { ObjectId } from 'mongodb';
 
-export async function GET() {
+export async function GET(request: Request) {
     try {
-        const user: any = await getUserFromHeader();
-        if (!user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
+        const { searchParams } = new URL(request.url);
+        const page = parseInt(searchParams.get('page') || '0');
+        const limit = parseInt(searchParams.get('limit') || '0');
 
         const client = await clientPromise;
         const db = client.db('blog_app');
 
-        const query: any = {};
-        if (user.role !== 'super_admin') {
-            query.organizationId = user.organizationId;
+        const user = await getUserFromHeader();
+        if (!user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const users = await db.collection('users').find(query).toArray();
+        const query: any = {};
+        if ((user as any).role !== 'super_admin') {
+            query.organizationId = (user as any).organizationId;
+        }
+
+        let cursor = db.collection('users').find(query);
+
+        if (page > 0 && limit > 0) {
+            cursor = cursor.skip((page - 1) * limit).limit(limit);
+        }
+
+        const users = await cursor.toArray();
 
         // Don't return passwords
         const safeUsers = users.map(({ password, ...u }) => u);
