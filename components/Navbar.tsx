@@ -83,6 +83,11 @@ export default function Navbar() {
                                     My Dashboard
                                 </Button>
                             )}
+                            {user.role === 'super_admin' && (
+                                <Button color="inherit" component={Link} href="/admin/observability" sx={{ color: '#00ff00', fontWeight: 'bold' }}>
+                                    System Life
+                                </Button>
+                            )}
                             <Button color="inherit" component={Link} href="/profile" sx={{ mr: 1 }}>
                                 Profile
                             </Button>

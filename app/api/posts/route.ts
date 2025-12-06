@@ -1,8 +1,9 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import clientPromise from '@/lib/db';
 import { PostSchema } from '@/lib/schemas';
 import { getUserFromHeader } from '@/lib/auth';
 import { sendEmail, generateAnnouncementEmail } from '@/lib/email';
+import { withObservability } from '@/engines/Observability/wrapper';
 
 export async function GET(request: Request) {
     try {
@@ -41,7 +42,7 @@ export async function GET(request: Request) {
     }
 }
 
-export async function POST(request: Request) {
+async function createPost(request: NextRequest) {
     try {
         const user: any = await getUserFromHeader();
         if (!user || (user.role !== 'class_rep' && user.role !== 'super_admin')) {
@@ -106,6 +107,8 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Failed to create post' }, { status: 500 });
     }
 }
+
+export const POST = withObservability(createPost, 'CreatePostAPI');
 
 export async function PUT(request: Request) {
     try {

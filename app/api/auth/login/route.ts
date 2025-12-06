@@ -1,9 +1,10 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import clientPromise from '@/lib/db';
 import { LoginSchema } from '@/lib/schemas';
 import { comparePassword, signToken } from '@/lib/auth';
+import { withObservability } from '@/engines/Observability/wrapper';
 
-export async function POST(request: Request) {
+async function handler(request: NextRequest) {
     try {
         const body = await request.json();
         const result = LoginSchema.safeParse(body);
