@@ -3,7 +3,7 @@
 A specialized, feature-rich blog application designed for the URCSTIT class. This project combines a robust content management system with a distinct "Hacker/Geek" aesthetic, tailored for IT students.
 
 ![Hacker Aesthetic](https://img.shields.io/badge/Style-Hacker%20Geek-00ff00?style=for-the-badge)
-![Next.js](https://img.shields.io/badge/Next.js-15-black?style=for-the-badge&logo=next.js)
+![Next.js](https://img.shields.io/badge/Next.js-16-black?style=for-the-badge&logo=next.js)
 ![MUI](https://img.shields.io/badge/MUI-v5-007FFF?style=for-the-badge&logo=mui)
 ![MongoDB](https://img.shields.io/badge/MongoDB-Database-47A248?style=for-the-badge&logo=mongodb)
 
