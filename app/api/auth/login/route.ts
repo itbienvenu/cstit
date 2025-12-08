@@ -58,3 +58,5 @@ async function handler(request: NextRequest) {
         return NextResponse.json({ error: 'Failed to login' }, { status: 500 });
     }
 }
+
+export const POST = withObservability(handler, 'LoginAPI');
