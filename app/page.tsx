@@ -55,7 +55,28 @@ export default function Home() {
     <main>
       <Navbar />
       <Box sx={{ p: 4, minHeight: '80vh' }}>
-        <Container maxWidth="md">
+        <Container maxWidth="xl">
+          {/* Top Banner Ad Placeholder */}
+          <Box sx={{ mb: 4, display: 'flex', justifyContent: 'center' }}>
+            {/* Dynamic imported placeholder or direct usage */}
+            <div style={{ width: '100%', maxWidth: '728px' }}>
+              <Box
+                sx={{
+                  width: '100%',
+                  height: 90,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  border: '2px dashed #ccc',
+                  bgcolor: '#f5f5f5',
+                  mb: 2
+                }}
+              >
+                <Typography color="text.secondary">TOP BANNER ADS (728x90)</Typography>
+              </Box>
+            </div>
+          </Box>
+
           <Typography variant="h3" component="h1" gutterBottom align="center" sx={{ fontWeight: 'bold', mb: 4 }}>
             Class Announcements
           </Typography>
@@ -79,21 +100,63 @@ export default function Home() {
             )}
           </Box>
 
-          {loading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-              <CircularProgress />
-            </Box>
-          ) : error ? (
-            <Alert severity="info" sx={{ mt: 2 }}>{error}</Alert>
-          ) : (
-            <PostList initialPosts={posts} />
-          )}
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '3fr 1fr' }, gap: 4 }}>
+            {/* Main Feed Column */}
+            <Box>
+              {loading ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+                  <CircularProgress />
+                </Box>
+              ) : error ? (
+                <Alert severity="info" sx={{ mt: 2 }}>{error}</Alert>
+              ) : (
+                <PostList initialPosts={posts} />
+              )}
 
-          {!loading && posts.length === 0 && !error && (
-            <Typography align="center" sx={{ mt: 4, color: 'text.secondary' }}>
-              No announcements yet for your class.
-            </Typography>
-          )}
+              {!loading && posts.length === 0 && !error && (
+                <Typography align="center" sx={{ mt: 4, color: 'text.secondary' }}>
+                  No announcements yet for your class.
+                </Typography>
+              )}
+            </Box>
+
+            {/* Right Sidebar Column */}
+            <Box sx={{ display: { xs: 'none', lg: 'block' } }}>
+              <Box sx={{ position: 'sticky', top: 100 }}>
+                <Box
+                  sx={{
+                    width: '100%',
+                    height: 600,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    border: '4px dashed #ff0000',
+                    bgcolor: '#ffecec',
+                    mb: 4,
+                    zIndex: 10
+                  }}
+                >
+                  <Typography color="error" fontWeight="bold">SIDEBAR ADS (160x600)</Typography>
+                </Box>
+
+                <Box
+                  sx={{
+                    width: '100%',
+                    height: 250,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    border: '4px dashed #ff0000',
+                    bgcolor: '#ffecec',
+                    zIndex: 10
+                  }}
+                >
+                  <Typography color="error" fontWeight="bold">SIDEBAR ADS (300x250)</Typography>
+                </Box>
+              </Box>
+            </Box>
+          </Box>
+
         </Container>
       </Box>
     </main>

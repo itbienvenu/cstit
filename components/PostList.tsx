@@ -78,7 +78,7 @@ export default function PostList({ initialPosts }: { initialPosts: Post[] }) {
     });
 
     return (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, p: 3, maxWidth: 800, mx: 'auto' }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, p: 0, maxWidth: '100%', mx: 'auto' }}>
             <TextField
                 fullWidth
                 label="Search Announcements"
@@ -87,8 +87,27 @@ export default function PostList({ initialPosts }: { initialPosts: Post[] }) {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 sx={{ mb: 2 }}
             />
-            {filteredPosts.map((post: any) => (
-                <PostCard key={post._id} post={post} />
+            {filteredPosts.map((post: any, index: number) => (
+                <React.Fragment key={post._id}>
+                    <PostCard post={post} />
+                    {/* Inject Ad every 3 posts */}
+                    {(index + 1) % 3 === 0 && (
+                        <Box sx={{
+                            width: '100%',
+                            p: 2,
+                            border: '2px dashed #999',
+                            bgcolor: '#fafafa',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            borderRadius: 1
+                        }}>
+                            <Typography variant="subtitle1" fontWeight="bold" color="text.secondary">IN-FEED AD SPACE</Typography>
+                            <Typography variant="caption" color="text.secondary">Responsive Banner</Typography>
+                        </Box>
+                    )}
+                </React.Fragment>
             ))}
             {filteredPosts.length === 0 && (
                 <Typography align="center" color="text.secondary">

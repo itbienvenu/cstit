@@ -54,10 +54,6 @@ export async function GET(request: Request) {
             !(msg as any).deletedFor?.includes(user.id)
         );
 
-        // Mark as read (optional, can be done in a separate call or here)
-        // For simplicity, we'll assume fetching them marks them as read for now, 
-        // or we can add a specific 'markRead' endpoint. 
-        // Let's reset unread count for this user in conversation
         await db.collection('conversations').updateOne(
             { _id: new ObjectId(conversationId) },
             { $set: { [`unreadCounts.${user.id}`]: 0 } }

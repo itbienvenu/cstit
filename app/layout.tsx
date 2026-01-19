@@ -33,7 +33,6 @@ export const metadata: Metadata = {
 import Footer from "@/components/Footer";
 import HackerBackground from "@/components/HackerBackground";
 
-// ... imports
 
 export default function RootLayout({
   children,
