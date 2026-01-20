@@ -15,6 +15,8 @@ export class SubmissionRepository {
             studentId: submission.studentId,
             fileUrl: submission.fileUrl,
             fileName: submission.fileName,
+            fileSize: submission.fileSize,
+            mimeType: submission.mimeType,
             submittedAt: submission.submittedAt,
             grade: submission.grade,
             feedback: submission.feedback
@@ -43,6 +45,8 @@ export class SubmissionRepository {
             studentId: doc.studentId,
             fileUrl: doc.fileUrl,
             fileName: doc.fileName,
+            fileSize: doc.fileSize,
+            mimeType: doc.mimeType,
             submittedAt: doc.submittedAt,
             grade: doc.grade,
             feedback: doc.feedback

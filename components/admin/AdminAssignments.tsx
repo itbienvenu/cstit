@@ -41,23 +41,34 @@ export default function AdminAssignments({ user }: AdminAssignmentsProps) {
 
     const [editingId, setEditingId] = React.useState<string | null>(null);
 
+    // Super Admin Context
+    const [targetClassId, setTargetClassId] = React.useState(user?.organizationId || '');
+
+    React.useEffect(() => {
+        if (user?.organizationId) {
+            setTargetClassId(user.organizationId);
+        }
+    }, [user]);
+
     const fetchAssignments = React.useCallback(async () => {
-        if (!user?.organizationId) return;
+        if (!targetClassId) return;
 
         try {
             const token = localStorage.getItem('token');
-            const res = await fetch(`/api/assignments?classId=${user.organizationId}`, {
+            const res = await fetch(`/api/assignments?classId=${targetClassId}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
 
             if (res.ok) {
                 const data = await res.json();
                 setAssignments(data);
+            } else {
+                setAssignments([]);
             }
         } catch (error) {
             console.error("Failed to fetch assignments", error);
         }
-    }, [user]);
+    }, [targetClassId]);
 
     React.useEffect(() => {
         fetchAssignments();
@@ -73,7 +84,7 @@ export default function AdminAssignments({ user }: AdminAssignmentsProps) {
                     Authorization: `Bearer ${token}`
                 },
                 body: JSON.stringify({
-                    classId: user.organizationId,
+                    classId: targetClassId,
                     title,
                     description,
                     deadlineAt: new Date(deadline).toISOString(),
@@ -149,12 +160,28 @@ export default function AdminAssignments({ user }: AdminAssignmentsProps) {
 
     return (
         <Box>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                <Typography variant="h6">Class Assignments</Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2, alignItems: 'center' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <Typography variant="h6">Class Assignments</Typography>
+                    {user?.role === 'super_admin' && (
+                        <TextField
+                            label="Target Class ID"
+                            size="small"
+                            value={targetClassId}
+                            onChange={(e) => setTargetClassId(e.target.value)}
+                            sx={{ width: 250 }}
+                            placeholder="Enter Class/Org ID to manage"
+                        />
+                    )}
+                </Box>
                 <Button
                     variant="contained"
                     startIcon={<AddIcon />}
                     onClick={() => {
+                        if (!targetClassId) {
+                            alert("Please enter a Target Class ID first.");
+                            return;
+                        }
                         setTitle('');
                         setDescription('');
                         setDeadline('');

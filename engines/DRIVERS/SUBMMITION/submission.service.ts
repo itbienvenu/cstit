@@ -17,6 +17,8 @@ export class SubmissionService {
             studentId: userId,
             fileUrl: dto.fileUrl,
             fileName: dto.fileName,
+            fileSize: dto.fileSize,
+            mimeType: dto.mimeType,
             submittedAt: new Date()
         };
 

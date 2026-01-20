@@ -15,6 +15,7 @@
     "@mui/material": "^7.3.6",
     "@types/nodemailer": "^7.0.4",
     "bcryptjs": "^3.0.3",
+    "date-fns": "^4.1.0",
     "dotenv": "^17.2.3",
     "googleapis": "^170.1.0",
     "jose": "^6.1.3",

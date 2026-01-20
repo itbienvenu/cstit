@@ -6,6 +6,7 @@ import {
     AssignmentResponseDTO
 } from './assignment.types';
 import { AssignmentRepository } from './assignment.repository';
+import { GoogleDriveService } from '@/lib/drive';
 
 export class AssignmentServiceImpl implements AssignmentServiceImpl {
     constructor(
@@ -14,7 +15,8 @@ export class AssignmentServiceImpl implements AssignmentServiceImpl {
             userId: string,
             classId: string,
             role?: 'student' | 'class_rep'
-        ) => Promise<boolean>
+        ) => Promise<boolean>,
+        private readonly googleDriveService: GoogleDriveService
     ) { }
 
     async createAssignment(
@@ -52,6 +54,22 @@ export class AssignmentServiceImpl implements AssignmentServiceImpl {
         };
 
         await this.assignmentRepository.insert(assignment);
+
+        // Creates folder in Drive immediately
+        if (dto.submissionMethod === 'FILE') {
+            try {
+                const rootFolderId = process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID;
+                if (rootFolderId) {
+                    const folderId = await this.googleDriveService.getOrCreateFolder(assignment.id, rootFolderId);
+                    console.log(`[AssignmentService] Created Drive folder for assignment ${assignment.id}: ${folderId}`);
+                } else {
+                    console.warn('[AssignmentService] GOOGLE_DRIVE_ROOT_FOLDER_ID not set, skipping folder creation');
+                }
+            } catch (error) {
+                console.error('[AssignmentService] Failed to create Drive folder:', error);
+                // We don't block assignment creation if drive fails, but we log it
+            }
+        }
 
         return assignment;
     }

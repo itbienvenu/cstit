@@ -47,7 +47,9 @@ export async function POST(
         const submission = await service.submitAssignment(user.id, {
             assignmentId: assignmentId,
             fileUrl: uploadResult.webViewLink, // Google Drive Link
-            fileName: filename
+            fileName: filename,
+            fileSize: file.size,
+            mimeType: file.type
         });
 
         return NextResponse.json(submission, { status: 201 });
