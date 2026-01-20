@@ -35,6 +35,7 @@ import CheckIcon from '@mui/icons-material/Check';
 import BlockIcon from '@mui/icons-material/Block';
 import RestoreIcon from '@mui/icons-material/Restore';
 import Navbar from '@/components/Navbar';
+import AdminAssignments from '@/components/admin/AdminAssignments';
 import { useRouter } from 'next/navigation';
 
 const icon = <CheckBoxOutlineBlankIcon fontSize="small" />;
@@ -341,6 +342,7 @@ export default function AdminDashboard() {
                         <Tab label="Manage Users" />
                         <Tab label="My Posts" />
                         <Tab label="Messages" />
+                        {(currentUser?.role === 'class_rep' || currentUser?.role === 'super_admin') && <Tab label="Assignments" />}
                         {currentUser?.role === 'super_admin' && <Tab label="Create Class" />}
                     </Tabs>
                 </Box>
@@ -483,8 +485,11 @@ export default function AdminDashboard() {
                 <CustomTabPanel value={value} index={3}>
                     <AdminMessages />
                 </CustomTabPanel>
+                <CustomTabPanel value={value} index={4}>
+                    <AdminAssignments user={currentUser} />
+                </CustomTabPanel>
                 {currentUser?.role === 'super_admin' && (
-                    <CustomTabPanel value={value} index={4}>
+                    <CustomTabPanel value={value} index={5}>
                         <SuperAdminClasses user={currentUser} />
                     </CustomTabPanel>
                 )}
