@@ -14,6 +14,7 @@ import {
 } from '@mui/material';
 import Navbar from '@/components/Navbar';
 import { useRouter } from 'next/navigation';
+import StudentAssignmentList from '@/components/assignments/StudentAssignmentList';
 
 export default function UserDashboard() {
     const [messages, setMessages] = React.useState<any[]>([]);
@@ -42,6 +43,11 @@ export default function UserDashboard() {
                 <Typography variant="h4" gutterBottom>
                     My Dashboard
                 </Typography>
+
+                <Box sx={{ mb: 6 }}>
+                    <StudentAssignmentList />
+                </Box>
+
                 <Typography variant="h6" gutterBottom sx={{ mt: 4 }}>
                     My Private Messages
                 </Typography>

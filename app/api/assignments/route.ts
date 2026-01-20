@@ -37,23 +37,62 @@ export async function GET(req: Request) {
     try {
         const user = await getUserFromHeader() as any;
         if (!user) {
+            console.log("[API][GET /assignments] Unauthorized: No user found");
             return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
         }
 
         const { searchParams } = new URL(req.url);
         let classId = searchParams.get("classId");
 
+        console.log(`[API][GET /assignments] User ID: ${user.id}, Initial Class ID: ${classId}`);
+
         const db = await getDb();
 
         if (!classId) {
-            // Auto-detect class from user profile
-            const usersCollection = db.collection("users");
-            const userProfile = await usersCollection.findOne({ _id: new ObjectId(user.id) });
-
-            if (userProfile && userProfile.organizationId) {
-                classId = userProfile.organizationId;
+            if (user.organizationId) {
+                classId = user.organizationId;
+                console.log(`[API][GET /assignments] Used Class ID from Token: ${classId}`);
             } else {
-                return NextResponse.json({ message: "Class ID is required or user is not in a class" }, { status: 400 });
+                const usersCollection = db.collection("users");
+                console.log(`[API][GET /assignments] Searching for user with _id: ${user.id} (as ObjectId: ${ObjectId.isValid(user.id)})`);
+
+                let userProfile;
+                try {
+                    if (ObjectId.isValid(user.id)) {
+                        userProfile = await usersCollection.findOne({ _id: new ObjectId(user.id) });
+                    }
+
+                    if (!userProfile) {
+                        console.log(`[API][GET /assignments] User not found by ObjectId. Trying by string _id or 'id' field...`);
+                        userProfile = await usersCollection.findOne({
+                            $or: [
+                                { _id: user.id },
+                                { id: user.id }
+                            ]
+                        });
+                    }
+                } catch (queryErr) {
+                    console.error("[API][GET /assignments] Error querying user profile:", queryErr);
+                }
+
+                if (userProfile && userProfile.organizationId) {
+                    classId = userProfile.organizationId;
+                    console.log(`[API][GET /assignments] Auto-detected Class ID: ${classId}`);
+                } else {
+                    console.log("[API][GET /assignments] Failed to detect Class ID. foundUser:", userProfile ? "YES" : "NO", "OrgId:", userProfile?.organizationId);
+                    // Try one more lookup strategy: check if there is an 'id' field instead of '_id'
+                    if (!userProfile) {
+                        const userById = await usersCollection.findOne({ id: user.id });
+                        if (userById && userById.organizationId) {
+                            classId = userById.organizationId;
+                            console.log(`[API][GET /assignments] Auto-detected Class ID via 'id' field: ${classId}`);
+                        }
+                    }
+
+                    if (!classId) {
+                        return NextResponse.json({ message: "Class ID associated with user not found" }, { status: 400 });
+                    }
+                }
             }
         }
 
@@ -62,9 +101,15 @@ export async function GET(req: Request) {
         const driveService = new GoogleDriveService();
         const service = new AssignmentServiceImpl(repository, classMembershipChecker, driveService);
 
+        console.log(`[API][GET /assignments] Calling service.getAssignmentsForClass with User: ${user.id}, Class: ${classId}`);
         const assignments = await service.getAssignmentsForClass(user.id, classId as string);
+        console.log(`[API][GET /assignments] Found ${assignments.length} assignments`);
         return NextResponse.json(assignments);
     } catch (err: any) {
-        return NextResponse.json({ message: err.message }, { status: 400 });
+        console.error("[API][GET /assignments] CRITICAL ERROR:", err);
+        return NextResponse.json({
+            message: err.message || "Unknown error occurred",
+            stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
+        }, { status: 500 });
     }
 }

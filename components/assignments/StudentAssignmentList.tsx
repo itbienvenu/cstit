@@ -34,8 +34,12 @@ export default function StudentAssignmentList() {
             try {
                 const token = localStorage.getItem("token");
                 // If no token, maybe redirect or just let it fail/empty
-                if (!token) return;
+                if (!token) {
+                    console.log("No token found in localStorage");
+                    return;
+                }
 
+                console.log("Fetching assignments...");
                 const res = await fetch("/api/assignments", {
                     headers: {
                         "Authorization": `Bearer ${token}`
