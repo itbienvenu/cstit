@@ -1,4 +1,5 @@
 export type AssignmentStatus = 'OPEN' | 'CLOSED' | 'GRADED' | 'SUBMITTED';
+export type SubmissionMethod = 'LINK' | 'FILE';
 
 export interface AssignmentEntity {
     id: string;
@@ -8,6 +9,8 @@ export interface AssignmentEntity {
     description: string;
     deadlineAt: Date;
     status: AssignmentStatus;
+    submissionMethod: SubmissionMethod;
+    submissionLink?: string; // Used if method is LINK
     createdAt: Date;
     updatedAt: Date;
 }
@@ -17,6 +20,8 @@ export interface CreateAssignmentDTO {
     title: string;
     description: string;
     deadlineAt: Date;
+    submissionMethod: SubmissionMethod;
+    submissionLink?: string;
 }
 
 export interface UpdateAssignmentDTO {
@@ -24,6 +29,8 @@ export interface UpdateAssignmentDTO {
     description?: string;
     deadlineAt?: Date;
     status?: AssignmentStatus;
+    submissionMethod?: SubmissionMethod;
+    submissionLink?: string;
 }
 
 export interface AssignmentResponseDTO {
@@ -33,6 +40,8 @@ export interface AssignmentResponseDTO {
     description: string;
     deadlineAt: Date;
     status: AssignmentStatus;
+    submissionMethod: SubmissionMethod;
+    submissionLink?: string;
     createdAt: Date;
     updatedAt: Date;
 

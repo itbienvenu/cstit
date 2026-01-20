@@ -45,6 +45,8 @@ export class AssignmentServiceImpl implements AssignmentServiceImpl {
             description: dto.description,
             deadlineAt: dto.deadlineAt,
             status: 'OPEN',
+            submissionMethod: dto.submissionMethod,
+            submissionLink: dto.submissionLink, // Pass the link
             createdAt: now,
             updatedAt: now
         };
@@ -101,12 +103,13 @@ export class AssignmentServiceImpl implements AssignmentServiceImpl {
             description: a.description,
             deadlineAt: a.deadlineAt,
             status: a.status,
+            submissionMethod: a.submissionMethod,
+            submissionLink: a.submissionLink,
             createdAt: a.createdAt,
             updatedAt: a.updatedAt,
             creator: {
                 id: a.createdBy,
                 name: a.createdBy,
-
             }
         }));
     }

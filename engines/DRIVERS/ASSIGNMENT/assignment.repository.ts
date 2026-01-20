@@ -15,6 +15,8 @@ export class AssignmentRepository {
             description: assignment.description,
             deadlineAt: assignment.deadlineAt,
             status: assignment.status,
+            submissionMethod: assignment.submissionMethod,
+            submissionLink: assignment.submissionLink,
             createdAt: assignment.createdAt,
             updatedAt: assignment.updatedAt
         });
@@ -82,6 +84,8 @@ export class AssignmentRepository {
             description: doc.description,
             deadlineAt: doc.deadlineAt,
             status: doc.status,
+            submissionMethod: doc.submissionMethod || 'LINK', // Default to LINK for legacy
+            submissionLink: doc.submissionLink,
             createdAt: doc.createdAt,
             updatedAt: doc.updatedAt
         };

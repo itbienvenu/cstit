@@ -36,6 +36,8 @@ export default function AdminAssignments({ user }: AdminAssignmentsProps) {
     const [title, setTitle] = React.useState('');
     const [description, setDescription] = React.useState('');
     const [deadline, setDeadline] = React.useState('');
+    const [submissionMethod, setSubmissionMethod] = React.useState('LINK');
+    const [submissionLink, setSubmissionLink] = React.useState('');
 
     const [editingId, setEditingId] = React.useState<string | null>(null);
 
@@ -74,7 +76,9 @@ export default function AdminAssignments({ user }: AdminAssignmentsProps) {
                     classId: user.organizationId,
                     title,
                     description,
-                    deadlineAt: new Date(deadline).toISOString()
+                    deadlineAt: new Date(deadline).toISOString(),
+                    submissionMethod,
+                    submissionLink: submissionMethod === 'LINK' ? submissionLink : undefined
                 })
             });
 
@@ -83,6 +87,8 @@ export default function AdminAssignments({ user }: AdminAssignmentsProps) {
                 setTitle('');
                 setDescription('');
                 setDeadline('');
+                setSubmissionLink('');
+                setSubmissionMethod('LINK');
                 fetchAssignments();
                 alert('Assignment created successfully!');
             } else {
@@ -102,6 +108,8 @@ export default function AdminAssignments({ user }: AdminAssignmentsProps) {
         const date = new Date(assignment.deadlineAt);
         const formatted = date.toISOString().slice(0, 16);
         setDeadline(formatted);
+        setSubmissionMethod(assignment.submissionMethod || 'LINK');
+        setSubmissionLink(assignment.submissionLink || '');
         setEditOpen(true);
     };
 
@@ -119,7 +127,9 @@ export default function AdminAssignments({ user }: AdminAssignmentsProps) {
                 body: JSON.stringify({
                     title,
                     description,
-                    deadlineAt: new Date(deadline).toISOString()
+                    deadlineAt: new Date(deadline).toISOString(),
+                    submissionMethod,
+                    submissionLink: submissionMethod === 'LINK' ? submissionLink : undefined
                 })
             });
 
@@ -148,6 +158,8 @@ export default function AdminAssignments({ user }: AdminAssignmentsProps) {
                         setTitle('');
                         setDescription('');
                         setDeadline('');
+                        setSubmissionLink('');
+                        setSubmissionMethod('LINK');
                         setCreateOpen(true);
                     }}
                 >
@@ -162,6 +174,8 @@ export default function AdminAssignments({ user }: AdminAssignmentsProps) {
                             <TableCell>Title</TableCell>
                             <TableCell>Description</TableCell>
                             <TableCell>Deadline</TableCell>
+                            <TableCell>Submission Method</TableCell>
+                            <TableCell>Submission Link</TableCell>
                             <TableCell>Status</TableCell>
                             <TableCell>Actions</TableCell>
                         </TableRow>
@@ -172,6 +186,20 @@ export default function AdminAssignments({ user }: AdminAssignmentsProps) {
                                 <TableCell>{row.title}</TableCell>
                                 <TableCell>{row.description}</TableCell>
                                 <TableCell>{new Date(row.deadlineAt).toLocaleString()}</TableCell>
+                                <TableCell>
+                                    <Chip label={row.submissionMethod || 'LINK'} size="small" />
+                                </TableCell>
+                                <TableCell>
+                                    {row.submissionMethod === 'LINK' && row.submissionLink ? (
+                                        <a href={row.submissionLink} target="_blank" rel="noopener noreferrer" style={{ color: 'blue', textDecoration: 'underline' }}>
+                                            Visit Link
+                                        </a>
+                                    ) : row.submissionMethod === 'FILE' ? (
+                                        'Direct Upload'
+                                    ) : (
+                                        'N/A'
+                                    )}
+                                </TableCell>
                                 <TableCell>
                                     <Chip
                                         label={row.status}
@@ -188,7 +216,7 @@ export default function AdminAssignments({ user }: AdminAssignmentsProps) {
                         ))}
                         {assignments.length === 0 && (
                             <TableRow>
-                                <TableCell colSpan={5} align="center">
+                                <TableCell colSpan={7} align="center">
                                     No assignments found.
                                 </TableCell>
                             </TableRow>
@@ -227,6 +255,35 @@ export default function AdminAssignments({ user }: AdminAssignmentsProps) {
                         value={deadline}
                         onChange={(e) => setDeadline(e.target.value)}
                     />
+
+                    <Box sx={{ mt: 2, mb: 1 }}>
+                        <Typography variant="subtitle2">Submission Method</Typography>
+                        <select
+                            value={submissionMethod}
+                            onChange={(e) => setSubmissionMethod(e.target.value)}
+                            style={{
+                                width: '100%',
+                                padding: '10px',
+                                marginTop: '5px',
+                                borderRadius: '4px',
+                                border: '1px solid #ccc'
+                            }}
+                        >
+                            <option value="LINK">External Link (Google Form, Drive, Dropbox)</option>
+                            <option value="FILE">File Upload (Direct to System)</option>
+                        </select>
+                    </Box>
+
+                    {submissionMethod === 'LINK' && (
+                        <TextField
+                            margin="dense"
+                            label="Submission Link (Google Drive / Form / Dropbox)"
+                            fullWidth
+                            placeholder="e.g., https://forms.google.com/..."
+                            value={submissionLink}
+                            onChange={(e) => setSubmissionLink(e.target.value)}
+                        />
+                    )}
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={() => setCreateOpen(false)}>Cancel</Button>
@@ -264,6 +321,35 @@ export default function AdminAssignments({ user }: AdminAssignmentsProps) {
                         value={deadline}
                         onChange={(e) => setDeadline(e.target.value)}
                     />
+
+                    <Box sx={{ mt: 2, mb: 1 }}>
+                        <Typography variant="subtitle2">Submission Method</Typography>
+                        <select
+                            value={submissionMethod}
+                            onChange={(e) => setSubmissionMethod(e.target.value)}
+                            style={{
+                                width: '100%',
+                                padding: '10px',
+                                marginTop: '5px',
+                                borderRadius: '4px',
+                                border: '1px solid #ccc'
+                            }}
+                        >
+                            <option value="LINK">External Link (Google Form, Drive, Dropbox)</option>
+                            <option value="FILE">File Upload (Direct to System)</option>
+                        </select>
+                    </Box>
+
+                    {submissionMethod === 'LINK' && (
+                        <TextField
+                            margin="dense"
+                            label="Submission Link (Google Drive / Form / Dropbox)"
+                            fullWidth
+                            placeholder="e.g., https://forms.google.com/..."
+                            value={submissionLink}
+                            onChange={(e) => setSubmissionLink(e.target.value)}
+                        />
+                    )}
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={() => setEditOpen(false)}>Cancel</Button>
