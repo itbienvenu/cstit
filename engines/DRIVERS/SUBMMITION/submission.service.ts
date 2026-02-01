@@ -9,7 +9,7 @@ export class SubmissionService {
         userId: string,
         dto: CreateSubmissionDTO
     ): Promise<StudentSubmissionEntity> {
-        // Here we could check if assignment is OPEN, etc. (skipping for now for speed)
+        // Here we could check if assignment is OPEN
 
         const submission: StudentSubmissionEntity = {
             id: new ObjectId().toHexString(),

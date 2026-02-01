@@ -21,14 +21,12 @@ export class ObservabilityEngine {
 
             await collection.insertOne(logEntry);
 
-            // Trigger alerts for high severity
             if (entry.level === LogLevel.CRITICAL || entry.level === LogLevel.ERROR) {
                 await this.sendAlert(logEntry);
             }
 
         } catch (error) {
             console.error('Failed to write system log:', error);
-            // Fallback to console if DB fails
             console.error('Original Log Entry:', entry);
         }
     }
@@ -62,7 +60,6 @@ export class ObservabilityEngine {
       </div>
     `;
 
-        // Fire and forget email to not block request
         sendEmail(ADMIN_EMAIL, subject, text, html).catch(err =>
             console.error('Failed to send alert email:', err)
         );

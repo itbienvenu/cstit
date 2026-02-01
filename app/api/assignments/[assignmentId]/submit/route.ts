@@ -27,6 +27,11 @@ export async function POST(
         const driveService = new GoogleDriveService();
         const rootFolderId = process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID;
 
+        if (!rootFolderId) {
+            console.error("Missing GOOGLE_DRIVE_ROOT_FOLDER_ID in environment variables");
+            return NextResponse.json({ message: "Server configuration error: Missing Drive Root Folder" }, { status: 500 });
+        }
+
         const assignmentFolderId = await driveService.getOrCreateFolder(assignmentId, rootFolderId);
 
         const buffer = Buffer.from(await file.arrayBuffer());
