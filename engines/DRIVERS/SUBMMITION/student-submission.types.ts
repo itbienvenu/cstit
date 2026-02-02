@@ -9,6 +9,13 @@ export interface StudentSubmissionEntity {
     submittedAt: Date;
     grade?: number;
     feedback?: string;
+    driveFolderId?: string;
+    resubmissionRequested?: boolean;
+    resubmissionRequestedAt?: Date;
+    resubmissionReason?: string;
+    resubmissionApproved?: boolean;
+    resubmissionApprovedBy?: string;
+    resubmissionApprovedAt?: Date;
 }
 
 export interface CreateSubmissionDTO {

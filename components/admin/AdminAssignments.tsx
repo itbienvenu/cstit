@@ -19,9 +19,15 @@ import {
     TextField,
     IconButton,
     Chip,
+    Alert,
+    Tabs,
+    Tab,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import AddIcon from '@mui/icons-material/Add';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import CancelIcon from '@mui/icons-material/Cancel';
 
 interface AdminAssignmentsProps {
     user: any;
@@ -31,6 +37,10 @@ export default function AdminAssignments({ user }: AdminAssignmentsProps) {
     const [assignments, setAssignments] = React.useState<any[]>([]);
     const [createOpen, setCreateOpen] = React.useState(false);
     const [editOpen, setEditOpen] = React.useState(false);
+    const [resubmissionRequests, setResubmissionRequests] = React.useState<any[]>([]);
+    const [submissions, setSubmissions] = React.useState<any[]>([]);
+    const [selectedAssignmentId, setSelectedAssignmentId] = React.useState<string | null>(null);
+    const [activeTab, setActiveTab] = React.useState<number>(0);
 
     // Form State
     const [title, setTitle] = React.useState('');
@@ -158,6 +168,76 @@ export default function AdminAssignments({ user }: AdminAssignmentsProps) {
         }
     };
 
+    const fetchResubmissionRequests = React.useCallback(async (assignmentId: string) => {
+        try {
+            const token = localStorage.getItem('token');
+            const res = await fetch(`/api/assignments/${assignmentId}/resubmission-requests`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                setResubmissionRequests(data.requests || []);
+            } else {
+                setResubmissionRequests([]);
+            }
+        } catch (error) {
+            console.error("Failed to fetch resubmission requests", error);
+        }
+    }, []);
+
+    const fetchSubmissions = React.useCallback(async (assignmentId: string) => {
+        try {
+            const token = localStorage.getItem('token');
+            const res = await fetch(`/api/assignments/${assignmentId}/submissions`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                setSubmissions(data.submissions || []);
+            } else {
+                setSubmissions([]);
+            }
+        } catch (error) {
+            console.error("Failed to fetch submissions", error);
+        }
+    }, []);
+
+    const handleViewRequests = (assignmentId: string) => {
+        setSelectedAssignmentId(assignmentId);
+        setActiveTab(0); // Reset to first tab
+        fetchSubmissions(assignmentId);
+        fetchResubmissionRequests(assignmentId);
+    };
+
+    const handleApproveReject = async (submissionId: string, action: 'approve' | 'reject') => {
+        try {
+            const token = localStorage.getItem('token');
+            const res = await fetch(`/api/submissions/${submissionId}/resubmission`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({ action })
+            });
+
+            if (res.ok) {
+                alert(`Resubmission request ${action}d successfully!`);
+                if (selectedAssignmentId) {
+                    fetchResubmissionRequests(selectedAssignmentId);
+                }
+            } else {
+                const data = await res.json();
+                alert(data.message || `Failed to ${action} request`);
+            }
+        } catch (error) {
+            console.error(error);
+            alert(`Error ${action}ing request`);
+        }
+    };
+
     return (
         <Box>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2, alignItems: 'center' }}>
@@ -238,6 +318,11 @@ export default function AdminAssignments({ user }: AdminAssignmentsProps) {
                                     <IconButton onClick={() => handleEditClick(row)} color="primary">
                                         <EditIcon />
                                     </IconButton>
+                                    {row.submissionMethod === 'FILE' && (
+                                        <IconButton onClick={() => handleViewRequests(row.id)} color="secondary">
+                                            <VisibilityIcon />
+                                        </IconButton>
+                                    )}
                                 </TableCell>
                             </TableRow>
                         ))}
@@ -251,6 +336,132 @@ export default function AdminAssignments({ user }: AdminAssignmentsProps) {
                     </TableBody>
                 </Table>
             </TableContainer>
+
+            {/* Resubmission Requests Section */}
+            {/* Tabbed Assignment Details Section */}
+            {selectedAssignmentId && (
+                <Box sx={{ mt: 4, mb: 4, p: 2, border: '1px solid #e0e0e0', borderRadius: 2 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                        <Typography variant="h6">Assignment Details</Typography>
+                        <Button
+                            variant="outlined"
+                            size="small"
+                            onClick={() => {
+                                setSelectedAssignmentId(null);
+                                setResubmissionRequests([]);
+                                setSubmissions([]);
+                            }}
+                        >
+                            Close
+                        </Button>
+                    </Box>
+
+                    <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
+                        <Tabs value={activeTab} onChange={(e, newValue) => setActiveTab(newValue)} aria-label="assignment details tabs">
+                            <Tab label={`Submissions (${submissions.length})`} />
+                            <Tab label={`Resubmission Requests (${resubmissionRequests.length})`} />
+                        </Tabs>
+                    </Box>
+
+                    {/* Tab 0: Submissions List */}
+                    {activeTab === 0 && (
+                        <>
+                            {submissions.length === 0 ? (
+                                <Alert severity="info">No submissions found for this assignment.</Alert>
+                            ) : (
+                                <TableContainer component={Paper}>
+                                    <Table>
+                                        <TableHead>
+                                            <TableRow>
+                                                <TableCell>Student</TableCell>
+                                                <TableCell>Email</TableCell>
+                                                <TableCell>Status</TableCell>
+                                                <TableCell>Submitted At</TableCell>
+                                                <TableCell>File</TableCell>
+                                            </TableRow>
+                                        </TableHead>
+                                        <TableBody>
+                                            {submissions.map((sub: any) => (
+                                                <TableRow key={sub.id}>
+                                                    <TableCell>{sub.student?.name || 'Unknown'}</TableCell>
+                                                    <TableCell>{sub.student?.email || 'Unknown'}</TableCell>
+                                                    <TableCell>
+                                                        <Chip
+                                                            label={sub.resubmissionRequested ? "Resubmission Requested" : "Submitted"}
+                                                            color={sub.resubmissionRequested ? "warning" : "success"}
+                                                            size="small"
+                                                        />
+                                                    </TableCell>
+                                                    <TableCell>{new Date(sub.submittedAt).toLocaleString()}</TableCell>
+                                                    <TableCell>
+                                                        <a href={sub.fileUrl} target="_blank" rel="noopener noreferrer">
+                                                            View File
+                                                        </a>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </TableContainer>
+                            )}
+                        </>
+                    )}
+
+                    {/* Tab 1: Resubmission Requests */}
+                    {activeTab === 1 && (
+                        <>
+                            {resubmissionRequests.length === 0 ? (
+                                <Alert severity="info">No pending resubmission requests for this assignment.</Alert>
+                            ) : (
+                                <TableContainer component={Paper}>
+                                    <Table>
+                                        <TableHead>
+                                            <TableRow>
+                                                <TableCell>Student Name</TableCell>
+                                                <TableCell>Student Email</TableCell>
+                                                <TableCell>Reason</TableCell>
+                                                <TableCell>Requested At</TableCell>
+                                                <TableCell>Actions</TableCell>
+                                            </TableRow>
+                                        </TableHead>
+                                        <TableBody>
+                                            {resubmissionRequests.map((request) => (
+                                                <TableRow key={request.id}>
+                                                    <TableCell>{request.student?.name || 'Unknown'}</TableCell>
+                                                    <TableCell>{request.student?.email || 'Unknown'}</TableCell>
+                                                    <TableCell>{request.resubmissionReason || 'No reason provided'}</TableCell>
+                                                    <TableCell>
+                                                        {request.resubmissionRequestedAt
+                                                            ? new Date(request.resubmissionRequestedAt).toLocaleString()
+                                                            : 'N/A'
+                                                        }
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <IconButton
+                                                            onClick={() => handleApproveReject(request.id, 'approve')}
+                                                            color="success"
+                                                            title="Approve"
+                                                        >
+                                                            <CheckCircleIcon />
+                                                        </IconButton>
+                                                        <IconButton
+                                                            onClick={() => handleApproveReject(request.id, 'reject')}
+                                                            color="error"
+                                                            title="Reject"
+                                                        >
+                                                            <CancelIcon />
+                                                        </IconButton>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </TableContainer>
+                            )}
+                        </>
+                    )}
+                </Box>
+            )}
 
             {/* Create Dialog */}
             <Dialog open={createOpen} onClose={() => setCreateOpen(false)} fullWidth>

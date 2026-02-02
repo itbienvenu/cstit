@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
     Box,
     Card,
@@ -21,44 +22,75 @@ import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import LinkIcon from '@mui/icons-material/Link';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { format } from "date-fns";
+import { fetchAssignments, fetchSubmissionStatus, submitAssignment, requestResubmission } from "@/lib/api/assignments";
 
 export default function StudentAssignmentList() {
-    const [assignments, setAssignments] = useState<AssignmentResponseDTO[]>([]);
+    const queryClient = useQueryClient();
     const [uploadAssignment, setUploadAssignment] = useState<AssignmentResponseDTO | null>(null);
     const [file, setFile] = useState<File | null>(null);
-    const [uploading, setUploading] = useState(false);
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
+    const [errorMsg, setErrorMsg] = useState<string | null>(null);
+    const [resubmissionReason, setResubmissionReason] = useState("");
 
-    useEffect(() => {
-        const fetchAssignments = async () => {
-            try {
-                const token = localStorage.getItem("token");
-                // If no token, maybe redirect or just let it fail/empty
-                if (!token) {
-                    console.log("No token found in localStorage");
-                    return;
-                }
+    // Fetch assignments with caching
+    const { data: assignments = [], isLoading: assignmentsLoading } = useQuery({
+        queryKey: ['assignments'],
+        queryFn: fetchAssignments,
+        staleTime: 5 * 60 * 1000, // 5 minutes
+    });
 
-                console.log("Fetching assignments...");
-                const res = await fetch("/api/assignments", {
-                    headers: {
-                        "Authorization": `Bearer ${token}`
-                    }
-                });
+    // Fetch submission status for all assignments
+    const submissionQueries = assignments.map((assignment: AssignmentResponseDTO) => {
+        // eslint-disable-next-line react-hooks/rules-of-hooks
+        return useQuery({
+            queryKey: ['submissionStatus', assignment.id],
+            queryFn: () => fetchSubmissionStatus(assignment.id),
+            staleTime: 30 * 1000, // 30 seconds (more dynamic)
+            enabled: !!assignment.id,
+        });
+    });
 
-                if (res.ok) {
-                    const data = await res.json();
-                    setAssignments(data);
-                } else {
-                    console.error("Failed to fetch assignments");
-                }
-            } catch (err) {
-                console.error("Error fetching assignments:", err);
-            }
-        };
+    // Create a submission status map
+    const submissionStatus: Record<string, any> = {};
+    assignments.forEach((assignment: AssignmentResponseDTO, index: number) => {
+        submissionStatus[assignment.id] = submissionQueries[index]?.data;
+    });
 
-        fetchAssignments();
-    }, []);
+    // Upload mutation
+    const uploadMutation = useMutation({
+        mutationFn: ({ assignmentId, file }: { assignmentId: string, file: File }) =>
+            submitAssignment(assignmentId, file),
+        onSuccess: (_, variables) => {
+            setSuccessMsg("Assignment submitted successfully!");
+            queryClient.invalidateQueries({ queryKey: ['submissionStatus', variables.assignmentId] });
+            setTimeout(() => {
+                setSuccessMsg(null);
+                setUploadAssignment(null);
+                setFile(null);
+            }, 2000);
+        },
+        onError: (error: any) => {
+            setErrorMsg(error.message || "Upload failed");
+        },
+    });
+
+    // Resubmission request mutation
+    const resubmissionMutation = useMutation({
+        mutationFn: ({ assignmentId, reason }: { assignmentId: string, reason: string }) =>
+            requestResubmission(assignmentId, reason),
+        onSuccess: (_, variables) => {
+            setSuccessMsg("Resubmission request sent successfully!");
+            queryClient.invalidateQueries({ queryKey: ['submissionStatus', variables.assignmentId] });
+            setResubmissionReason("");
+            setTimeout(() => {
+                setSuccessMsg(null);
+                setUploadAssignment(null);
+            }, 2000);
+        },
+        onError: (error: any) => {
+            setErrorMsg(error.message || "Request failed");
+        },
+    });
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
@@ -66,37 +98,16 @@ export default function StudentAssignmentList() {
         }
     };
 
-    const handleUpload = async () => {
+    const handleUpload = () => {
         if (!file || !uploadAssignment) return;
+        setErrorMsg(null);
+        uploadMutation.mutate({ assignmentId: uploadAssignment.id, file });
+    };
 
-        setUploading(true);
-        const formData = new FormData();
-        formData.append("file", file);
-
-        try {
-            const token = localStorage.getItem("token");
-            const res = await fetch(`/api/assignments/${uploadAssignment.id}/submit`, {
-                method: "POST",
-                headers: {
-                    "Authorization": `Bearer ${token}`
-                },
-                body: formData
-            });
-
-            if (!res.ok) throw new Error("Upload failed");
-
-            setSuccessMsg("Assignment submitted successfully!");
-            setTimeout(() => {
-                setSuccessMsg(null);
-                setUploadAssignment(null);
-                setFile(null);
-            }, 2000);
-        } catch (error) {
-            console.error(error);
-            alert("Failed to upload assignment");
-        } finally {
-            setUploading(false);
-        }
+    const handleRequestResubmission = () => {
+        if (!uploadAssignment || !resubmissionReason.trim()) return;
+        setErrorMsg(null);
+        resubmissionMutation.mutate({ assignmentId: uploadAssignment.id, reason: resubmissionReason });
     };
 
     return (
@@ -152,15 +163,51 @@ export default function StudentAssignmentList() {
                                             Open Submission Link
                                         </Button>
                                     ) : (
-                                        <Button
-                                            variant="contained"
-                                            startIcon={<CloudUploadIcon />}
-                                            onClick={() => setUploadAssignment(assignment)}
-                                            fullWidth
-                                            sx={{ background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)' }}
-                                        >
-                                            Submit File
-                                        </Button>
+                                        <>
+                                            {submissionStatus[assignment.id]?.submitted ? (
+                                                <>
+                                                    {submissionStatus[assignment.id]?.hasPendingRequest ? (
+                                                        <Alert severity="warning" icon={<CheckCircleIcon />}>
+                                                            Resubmission request pending approval
+                                                        </Alert>
+                                                    ) : submissionStatus[assignment.id]?.canResubmit ? (
+                                                        <Button
+                                                            variant="contained"
+                                                            startIcon={<CloudUploadIcon />}
+                                                            onClick={() => setUploadAssignment(assignment)}
+                                                            fullWidth
+                                                            sx={{ background: 'linear-gradient(45deg, #FF8E53 30%, #FE6B8B 90%)' }}
+                                                        >
+                                                            Resubmit File
+                                                        </Button>
+                                                    ) : (
+                                                        <>
+                                                            <Alert severity="success" icon={<CheckCircleIcon />} sx={{ mb: 1 }}>
+                                                                Already submitted
+                                                            </Alert>
+                                                            <Button
+                                                                variant="outlined"
+                                                                onClick={() => setUploadAssignment(assignment)}
+                                                                fullWidth
+                                                                size="small"
+                                                            >
+                                                                Request Resubmission
+                                                            </Button>
+                                                        </>
+                                                    )}
+                                                </>
+                                            ) : (
+                                                <Button
+                                                    variant="contained"
+                                                    startIcon={<CloudUploadIcon />}
+                                                    onClick={() => setUploadAssignment(assignment)}
+                                                    fullWidth
+                                                    sx={{ background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)' }}
+                                                >
+                                                    Submit File
+                                                </Button>
+                                            )}
+                                        </>
                                     )}
                                 </Box>
                             </CardContent>
@@ -169,36 +216,73 @@ export default function StudentAssignmentList() {
                 ))}
             </Grid>
 
-            {/* Upload Dialog */}
-            <Dialog open={!!uploadAssignment} onClose={() => !uploading && setUploadAssignment(null)} maxWidth="sm" fullWidth>
-                <DialogTitle>Submit Assignment</DialogTitle>
+            {/* Upload/Resubmission Dialog */}
+            <Dialog open={!!uploadAssignment} onClose={() => !uploadMutation.isPending && !resubmissionMutation.isPending && setUploadAssignment(null)} maxWidth="sm" fullWidth>
+                <DialogTitle>
+                    {uploadAssignment && submissionStatus[uploadAssignment.id]?.submitted && !submissionStatus[uploadAssignment.id]?.canResubmit
+                        ? "Request Resubmission Permission"
+                        : "Submit Assignment"
+                    }
+                </DialogTitle>
                 <DialogContent>
                     <Typography gutterBottom>
-                        Upload your work for: <strong>{uploadAssignment?.title}</strong>
+                        {uploadAssignment?.title && <strong>{uploadAssignment.title}</strong>}
                     </Typography>
 
-                    <Box sx={{ mt: 3, border: '2px dashed #ccc', borderRadius: 2, p: 4, textAlign: 'center', cursor: 'pointer' }}>
-                        <input
-                            accept="application/pdf,image/*,.doc,.docx"
-                            style={{ display: 'none' }}
-                            id="raised-button-file"
-                            type="file"
-                            onChange={handleFileChange}
-                        />
-                        <label htmlFor="raised-button-file">
-                            <Button variant="text" component="span" startIcon={<CloudUploadIcon sx={{ fontSize: 40 }} />}>
-                                {file ? file.name : "Click to select file"}
-                            </Button>
-                        </label>
-                    </Box>
-                    {uploading && <LinearProgress sx={{ mt: 2 }} />}
+                    {uploadAssignment && submissionStatus[uploadAssignment.id]?.submitted && !submissionStatus[uploadAssignment.id]?.canResubmit ? (
+                        <>
+                            <Typography variant="body2" color="text.secondary" sx={{ mt: 2, mb: 2 }}>
+                                You have already submitted this assignment. Please provide a reason for requesting resubmission permission:
+                            </Typography>
+                            <Box
+                                component="textarea"
+                                value={resubmissionReason}
+                                onChange={(e: any) => setResubmissionReason(e.target.value)}
+                                placeholder="e.g., I uploaded the wrong file, need to add more information..."
+                                sx={{
+                                    width: '100%',
+                                    minHeight: 100,
+                                    p: 2,
+                                    border: '1px solid #ccc',
+                                    borderRadius: 1,
+                                    fontFamily: 'inherit',
+                                    fontSize: '14px',
+                                    resize: 'vertical'
+                                }}
+                            />
+                        </>
+                    ) : (
+                        <Box sx={{ mt: 3, border: '2px dashed #ccc', borderRadius: 2, p: 4, textAlign: 'center', cursor: 'pointer' }}>
+                            <input accept="application/pdf,image/*,.doc,.docx" style={{ display: 'none' }} id="raised-button-file" type="file" onChange={handleFileChange} />
+                            <label htmlFor="raised-button-file">
+                                <Button variant="text" component="span" startIcon={<CloudUploadIcon sx={{ fontSize: 40 }} />}>
+                                    {file ? file.name : "Click to select file"}
+                                </Button>
+                            </label>
+                        </Box>
+                    )}
+
+                    {(uploadMutation.isPending || resubmissionMutation.isPending) && <LinearProgress sx={{ mt: 2 }} />}
                     {successMsg && <Alert severity="success" sx={{ mt: 2 }} icon={<CheckCircleIcon />}>{successMsg}</Alert>}
+                    {errorMsg && <Alert severity="error" sx={{ mt: 2 }}>{errorMsg}</Alert>}
                 </DialogContent>
                 <DialogActions>
-                    <Button onClick={() => setUploadAssignment(null)} disabled={uploading}>Cancel</Button>
-                    <Button onClick={handleUpload} variant="contained" disabled={!file || uploading}>
-                        Upload
+                    <Button onClick={() => { setUploadAssignment(null); setErrorMsg(null); setResubmissionReason(""); }} disabled={uploadMutation.isPending || resubmissionMutation.isPending}>
+                        Cancel
                     </Button>
+                    {uploadAssignment && submissionStatus[uploadAssignment.id]?.submitted && !submissionStatus[uploadAssignment.id]?.canResubmit ? (
+                        <Button
+                            onClick={handleRequestResubmission}
+                            variant="contained"
+                            disabled={!resubmissionReason.trim() || resubmissionMutation.isPending}
+                        >
+                            Send Request
+                        </Button>
+                    ) : (
+                        <Button onClick={handleUpload} variant="contained" disabled={!file || uploadMutation.isPending}>
+                            Upload
+                        </Button>
+                    )}
                 </DialogActions>
             </Dialog>
         </Box>

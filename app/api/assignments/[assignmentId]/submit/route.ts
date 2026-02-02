@@ -24,43 +24,61 @@ export async function POST(
             return NextResponse.json({ message: "No file uploaded" }, { status: 400 });
         }
 
-        const driveService = new GoogleDriveService();
-        const rootFolderId = process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID;
-
-        if (!rootFolderId) {
-            console.error("Missing GOOGLE_DRIVE_ROOT_FOLDER_ID in environment variables");
-            return NextResponse.json({ message: "Server configuration error: Missing Drive Root Folder" }, { status: 500 });
-        }
-
-        const assignmentFolderId = await driveService.getOrCreateFolder(assignmentId, rootFolderId);
-
-        const buffer = Buffer.from(await file.arrayBuffer());
-        const stream = Readable.from(buffer);
-        const filename = file.name.replace(/\s/g, '_'); // Sanitize
-        const uploadResult = await driveService.uploadFile(
-            stream,
-            filename,
-            file.type,
-            assignmentFolderId
-        );
-
-        // 4. Save Record to DB
         const db = await getDb();
         const repository = new SubmissionRepository(db);
         const service = new SubmissionService(repository);
 
-        const submission = await service.submitAssignment(user.id, {
-            assignmentId: assignmentId,
-            fileUrl: uploadResult.webViewLink, // Google Drive Link
-            fileName: filename,
-            fileSize: file.size,
-            mimeType: file.type
-        });
+        try {
+            const driveService = new GoogleDriveService();
+            const rootFolderId = process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID;
 
-        return NextResponse.json(submission, { status: 201 });
+            if (!rootFolderId) {
+                console.error("Missing GOOGLE_DRIVE_ROOT_FOLDER_ID in environment variables");
+                return NextResponse.json({ message: "Server configuration error: Missing Drive Root Folder" }, { status: 500 });
+            }
+
+            const assignmentFolderId = await driveService.getOrCreateFolder(assignmentId, rootFolderId);
+
+            const buffer = Buffer.from(await file.arrayBuffer());
+            const stream = Readable.from(buffer);
+            const filename = file.name.replace(/\s/g, '_');
+            const uploadResult = await driveService.uploadFile(
+                stream,
+                filename,
+                file.type,
+                assignmentFolderId
+            );
+
+            const submission = await service.submitAssignment(user.id, {
+                assignmentId: assignmentId,
+                fileUrl: uploadResult.webViewLink,
+                fileName: filename,
+                fileSize: file.size,
+                mimeType: file.type,
+                driveFolderId: assignmentFolderId
+            });
+
+            return NextResponse.json(submission, { status: 201 });
+
+        } catch (submissionError: any) {
+            const errorMessage = submissionError.message || 'Unknown error';
+
+            if (errorMessage.includes('already submitted') ||
+                errorMessage.includes('pending resubmission request') ||
+                errorMessage.includes('Request resubmission permission')) {
+                return NextResponse.json({
+                    message: errorMessage,
+                    canRequestResubmission: errorMessage.includes('already submitted')
+                }, { status: 400 });
+            }
+
+            throw submissionError;
+        }
 
     } catch (err: any) {
         console.error("Upload error:", err);
-        return NextResponse.json({ message: err.message }, { status: 500 });
+        return NextResponse.json({
+            message: err.message || "An unexpected error occurred"
+        }, { status: 500 });
     }
 }

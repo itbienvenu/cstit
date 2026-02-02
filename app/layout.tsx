@@ -32,6 +32,7 @@ export const metadata: Metadata = {
 
 import Footer from "@/components/Footer";
 import HackerBackground from "@/components/HackerBackground";
+import { ReactQueryProvider } from "@/providers/ReactQueryProvider";
 
 
 export default function RootLayout({
@@ -43,13 +44,15 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <ThemeRegistry>
-          <HackerBackground />
-          <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', position: 'relative', zIndex: 1 }}>
-            <main className="min-h-screen" style={{ flexGrow: 1, minHeight: 0 }}>
-              {children}
-            </main>
-            <Footer />
-          </div>
+          <ReactQueryProvider>
+            <HackerBackground />
+            <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', position: 'relative', zIndex: 1 }}>
+              <main className="min-h-screen" style={{ flexGrow: 1, minHeight: 0 }}>
+                {children}
+              </main>
+              <Footer />
+            </div>
+          </ReactQueryProvider>
         </ThemeRegistry>
       </body>
     </html>

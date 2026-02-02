@@ -7,9 +7,21 @@ export class SubmissionService {
 
     async submitAssignment(
         userId: string,
-        dto: CreateSubmissionDTO
+        dto: CreateSubmissionDTO & { driveFolderId?: string }
     ): Promise<StudentSubmissionEntity> {
-        // Here we could check if assignment is OPEN
+        const existingSubmission = await this.submissionRepository.findByStudentAndAssignment(userId, dto.assignmentId);
+
+        if (existingSubmission) {
+            if (existingSubmission.resubmissionRequested && !existingSubmission.resubmissionApproved) {
+                throw new Error('You have a pending resubmission request. Please wait for class rep approval.');
+            }
+
+            if (!existingSubmission.resubmissionApproved) {
+                throw new Error('You have already submitted this assignment. Request resubmission permission from your class rep if you need to update it.');
+            }
+
+            await this.submissionRepository.deleteById(existingSubmission.id);
+        }
 
         const submission: StudentSubmissionEntity = {
             id: new ObjectId().toHexString(),
@@ -19,7 +31,8 @@ export class SubmissionService {
             fileName: dto.fileName,
             fileSize: dto.fileSize,
             mimeType: dto.mimeType,
-            submittedAt: new Date()
+            submittedAt: new Date(),
+            driveFolderId: dto.driveFolderId
         };
 
         await this.submissionRepository.insert(submission);
@@ -32,5 +45,62 @@ export class SubmissionService {
 
     async getStudentSubmission(userId: string, assignmentId: string): Promise<StudentSubmissionEntity | null> {
         return this.submissionRepository.findByStudentAndAssignment(userId, assignmentId);
+    }
+
+    async requestResubmission(userId: string, assignmentId: string, reason: string): Promise<StudentSubmissionEntity> {
+        const submission = await this.submissionRepository.findByStudentAndAssignment(userId, assignmentId);
+
+        if (!submission) {
+            throw new Error('No submission found for this assignment');
+        }
+
+        if (submission.resubmissionRequested) {
+            throw new Error('You have already requested resubmission. Please wait for approval.');
+        }
+
+        submission.resubmissionRequested = true;
+        submission.resubmissionRequestedAt = new Date();
+        submission.resubmissionReason = reason;
+
+        await this.submissionRepository.update(submission.id, submission);
+        return submission;
+    }
+
+    async approveResubmission(submissionId: string, classRepId: string): Promise<StudentSubmissionEntity> {
+        const submission = await this.submissionRepository.findById(submissionId);
+
+        if (!submission) {
+            throw new Error('Submission not found');
+        }
+
+        if (!submission.resubmissionRequested) {
+            throw new Error('No resubmission request found');
+        }
+
+        submission.resubmissionApproved = true;
+        submission.resubmissionApprovedBy = classRepId;
+        submission.resubmissionApprovedAt = new Date();
+
+        await this.submissionRepository.update(submissionId, submission);
+        return submission;
+    }
+
+    async rejectResubmission(submissionId: string): Promise<StudentSubmissionEntity> {
+        const submission = await this.submissionRepository.findById(submissionId);
+
+        if (!submission) {
+            throw new Error('Submission not found');
+        }
+
+        submission.resubmissionRequested = false;
+        submission.resubmissionRequestedAt = undefined;
+        submission.resubmissionReason = undefined;
+
+        await this.submissionRepository.update(submissionId, submission);
+        return submission;
+    }
+
+    async getPendingResubmissionRequests(assignmentId: string): Promise<StudentSubmissionEntity[]> {
+        return this.submissionRepository.findPendingResubmissions(assignmentId);
     }
 }

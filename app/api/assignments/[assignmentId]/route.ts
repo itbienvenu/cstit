@@ -4,6 +4,7 @@ import { getDb } from "@/lib/db";
 import { classMembershipChecker } from "@/lib/classMembershipChecker";
 import { getUserFromHeader } from "@/lib/auth";
 import { AssignmentRepository } from "@/engines/DRIVERS/ASSIGNMENT/assignment.repository";
+import { GoogleDriveService } from "@/lib/drive";
 
 interface RouteParams {
     params: Promise<{
@@ -26,7 +27,8 @@ export async function GET(
         const db = await getDb();
         const assignmentCollection = db.collection("assignments") as any;
         const repository = new AssignmentRepository(assignmentCollection);
-        const service = new AssignmentServiceImpl(repository, classMembershipChecker);
+        const driveService = new GoogleDriveService();
+        const service = new AssignmentServiceImpl(repository, classMembershipChecker, driveService);
 
         const assignment = await service.getAssignmentById(user.id, assignmentId);
         return NextResponse.json(assignment);
@@ -62,7 +64,8 @@ export async function PUT(
         const db = await getDb();
         const assignmentCollection = db.collection("assignments") as any;
         const repository = new AssignmentRepository(assignmentCollection);
-        const service = new AssignmentServiceImpl(repository, classMembershipChecker);
+        const driveService = new GoogleDriveService();
+        const service = new AssignmentServiceImpl(repository, classMembershipChecker, driveService);
 
         await service.updateAssignment(user.id, assignmentId, dto);
         return NextResponse.json({ message: "Assignment updated successfully" });
