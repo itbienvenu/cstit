@@ -124,7 +124,7 @@ export default function StudentAssignmentList() {
             )}
 
             <Grid container spacing={3}>
-                {assignments.map((assignment) => (
+                {assignments.map((assignment: AssignmentResponseDTO) => (
                     <Grid size={{ xs: 12, md: 6, lg: 4 }} key={assignment.id}>
                         <Card sx={{
                             height: '100%',
