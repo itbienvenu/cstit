@@ -59,10 +59,16 @@ export default function StudentAssignmentList() {
 
     const filteredAssignments = assignments.filter((assignment: AssignmentResponseDTO) => {
         const status = submissionStatus[assignment.id]?.submission;
+        const isSubmitted = submissionStatus[assignment.id]?.submitted;
+        const isPastDue = new Date(assignment.deadlineAt) < new Date();
+
         if (tabValue === 0) return true; // All
-        if (tabValue === 1) return status?.hasPendingRequest; // Pending
-        if (tabValue === 2) return status?.canResubmit; // Approved
-        if (tabValue === 3) return status?.isRejected; // Rejected
+        if (tabValue === 1) return isSubmitted; // Submitted
+        if (tabValue === 2) return status?.hasPendingRequest; // Pending
+        if (tabValue === 3) return status?.canResubmit; // Approved
+        if (tabValue === 4) return status?.isRejected; // Rejected
+        if (tabValue === 5) return isPastDue && !isSubmitted; // Past Due
+
         return true;
     });
 
@@ -130,9 +136,11 @@ export default function StudentAssignmentList() {
                 <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
                     <Tabs value={tabValue} onChange={(_, val) => setTabValue(val)} variant="scrollable" scrollButtons="auto">
                         <Tab label="All" />
+                        <Tab label="Submitted" />
                         <Tab label="Pending Request" />
                         <Tab label="Approved" />
                         <Tab label="Rejected" />
+                        <Tab label="Past Due" />
                     </Tabs>
                 </Box>
             </Box>
@@ -183,11 +191,16 @@ export default function StudentAssignmentList() {
                         }}>
                             <CardContent sx={{ flexGrow: 1 }}>
                                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-                                    <Chip
-                                        label={assignment.status}
-                                        color={assignment.status === 'OPEN' ? 'success' : 'default'}
-                                        size="small"
-                                    />
+                                    <Box sx={{ display: 'flex', gap: 1 }}>
+                                        <Chip
+                                            label={assignment.status}
+                                            color={assignment.status === 'OPEN' ? 'success' : 'default'}
+                                            size="small"
+                                        />
+                                        {new Date(assignment.deadlineAt) < new Date() && (
+                                            <Chip label="PAST DUE" color="error" size="small" />
+                                        )}
+                                    </Box>
                                     <Typography variant="caption" color="text.secondary">
                                         Due: {format(new Date(assignment.deadlineAt), 'MMM dd, yyyy')}
                                     </Typography>
@@ -253,15 +266,21 @@ export default function StudentAssignmentList() {
                                                     )}
                                                 </>
                                             ) : (
-                                                <Button
-                                                    variant="contained"
-                                                    startIcon={<CloudUploadIcon />}
-                                                    onClick={() => setUploadAssignment(assignment)}
-                                                    fullWidth
-                                                    sx={{ background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)' }}
-                                                >
-                                                    Submit File
-                                                </Button>
+                                                new Date(assignment.deadlineAt) < new Date() ? (
+                                                    <Alert severity="error" sx={{ py: 0 }}>
+                                                        Deadline has passed. Submission closed.
+                                                    </Alert>
+                                                ) : (
+                                                    <Button
+                                                        variant="contained"
+                                                        startIcon={<CloudUploadIcon />}
+                                                        onClick={() => setUploadAssignment(assignment)}
+                                                        fullWidth
+                                                        sx={{ background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)' }}
+                                                    >
+                                                        Submit File
+                                                    </Button>
+                                                )
                                             )}
                                         </>
                                     )}

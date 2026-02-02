@@ -1,3 +1,4 @@
+import { ObjectId } from "mongodb";
 import { NextResponse } from "next/server";
 import { getUserFromHeader } from "@/lib/auth";
 import { getDb } from "@/lib/db";
@@ -27,6 +28,26 @@ export async function POST(
         const db = await getDb();
         const repository = new SubmissionRepository(db);
         const service = new SubmissionService(repository);
+
+        // Check assignment deadline
+        const assignmentsCollection = db.collection("assignments") as any;
+        const assignmentDoc = await assignmentsCollection.findOne({
+            _id: new ObjectId(assignmentId),
+            deletedAt: { $exists: false }
+        });
+
+        if (!assignmentDoc) {
+            return NextResponse.json({ message: "Assignment not found" }, { status: 404 });
+        }
+
+        const deadline = new Date(assignmentDoc.deadlineAt);
+        const now = new Date();
+        const existingSubmission = await service.getStudentSubmission(user.id, assignmentId);
+
+        // Block if past due AND not an approved resubmission
+        if (now > deadline && (!existingSubmission || !existingSubmission.resubmissionApproved)) {
+            return NextResponse.json({ message: "Deadline has passed. Submission is closed." }, { status: 403 });
+        }
 
         try {
             const driveService = new GoogleDriveService();
