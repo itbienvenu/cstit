@@ -6,6 +6,7 @@ import { SubmissionRepository } from "@/engines/DRIVERS/SUBMMITION/submission.re
 import { SubmissionService } from "@/engines/DRIVERS/SUBMMITION/submission.service";
 import { GoogleDriveService } from "@/lib/drive";
 import { Readable } from "stream";
+import { classMembershipChecker } from "@/lib/classMembershipChecker";
 
 export async function POST(
     req: Request,
@@ -38,6 +39,12 @@ export async function POST(
 
         if (!assignmentDoc) {
             return NextResponse.json({ message: "Assignment not found" }, { status: 404 });
+        }
+
+        // Zero Trust: Verify class membership
+        const isMember = await classMembershipChecker(user.id, assignmentDoc.classId);
+        if (!isMember) {
+            return NextResponse.json({ message: "Access denied: You are not a member of this class" }, { status: 403 });
         }
 
         const deadline = new Date(assignmentDoc.deadlineAt);

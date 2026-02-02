@@ -5,6 +5,7 @@ import clientPromise from "@/lib/db";
 import { SubmissionRepository } from "@/engines/DRIVERS/SUBMMITION/submission.repository";
 import { SubmissionService } from "@/engines/DRIVERS/SUBMMITION/submission.service";
 import { ObjectId } from "mongodb";
+import { classMembershipChecker } from "@/lib/classMembershipChecker";
 
 export async function GET(
     req: Request,
@@ -19,6 +20,20 @@ export async function GET(
         }
 
         const db = await getDb();
+
+        // Zero Trust: Verify user is a Class Rep for this assignment's class
+        const assignmentsCollection = db.collection("assignments") as any;
+        const assignment = await assignmentsCollection.findOne({ _id: new ObjectId(assignmentId) });
+
+        if (!assignment) {
+            return NextResponse.json({ message: "Assignment not found" }, { status: 404 });
+        }
+
+        const isRep = await classMembershipChecker(user.id, assignment.classId, 'class_rep');
+        if (!isRep) {
+            return NextResponse.json({ message: "Access denied: Only Class Reps can view all submissions" }, { status: 403 });
+        }
+
         const repository = new SubmissionRepository(db);
         const service = new SubmissionService(repository);
 

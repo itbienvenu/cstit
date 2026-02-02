@@ -3,6 +3,8 @@ import { getUserFromHeader } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { SubmissionRepository } from "@/engines/DRIVERS/SUBMMITION/submission.repository";
 import { SubmissionService } from "@/engines/DRIVERS/SUBMMITION/submission.service";
+import { classMembershipChecker } from "@/lib/classMembershipChecker";
+import { ObjectId } from "mongodb";
 
 export async function POST(
     req: Request,
@@ -25,6 +27,24 @@ export async function POST(
         const db = await getDb();
         const repository = new SubmissionRepository(db);
         const service = new SubmissionService(repository);
+
+        // Zero Trust: Verify user is a Class Rep for the assignment's class
+        const submissionDoc = await repository.findById(submissionId);
+        if (!submissionDoc) {
+            return NextResponse.json({ message: "Submission not found" }, { status: 404 });
+        }
+
+        const assignmentsCollection = db.collection("assignments") as any;
+        const assignment = await assignmentsCollection.findOne({ _id: new ObjectId(submissionDoc.assignmentId) });
+
+        if (!assignment) {
+            return NextResponse.json({ message: "Assignment not found" }, { status: 404 });
+        }
+
+        const isRep = await classMembershipChecker(user.id, assignment.classId, 'class_rep');
+        if (!isRep) {
+            return NextResponse.json({ message: "Access denied: Only Class Reps can manage resubmissions" }, { status: 403 });
+        }
 
         let submission;
         if (action === 'approve') {

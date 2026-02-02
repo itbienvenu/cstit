@@ -3,6 +3,8 @@ import { getUserFromHeader } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { SubmissionRepository } from "@/engines/DRIVERS/SUBMMITION/submission.repository";
 import { SubmissionService } from "@/engines/DRIVERS/SUBMMITION/submission.service";
+import { classMembershipChecker } from "@/lib/classMembershipChecker";
+import { ObjectId } from "mongodb";
 
 export async function GET(
     req: Request,
@@ -17,6 +19,20 @@ export async function GET(
         }
 
         const db = await getDb();
+
+        // Zero Trust: Verify user belongs to the assignment's class
+        const assignmentsCollection = db.collection("assignments") as any;
+        const assignment = await assignmentsCollection.findOne({ _id: new ObjectId(assignmentId) });
+
+        if (!assignment) {
+            return NextResponse.json({ message: "Assignment not found" }, { status: 404 });
+        }
+
+        const isMember = await classMembershipChecker(user.id, assignment.classId);
+        if (!isMember) {
+            return NextResponse.json({ message: "Access denied: You are not a member of this class" }, { status: 403 });
+        }
+
         const repository = new SubmissionRepository(db);
         const service = new SubmissionService(repository);
 
