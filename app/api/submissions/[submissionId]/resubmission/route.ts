@@ -16,7 +16,7 @@ export async function POST(
             return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
         }
 
-        const { action } = await req.json();
+        const { action, reason } = await req.json();
 
         if (!action || !['approve', 'reject'].includes(action)) {
             return NextResponse.json({ message: "Invalid action. Must be 'approve' or 'reject'" }, { status: 400 });
@@ -30,7 +30,7 @@ export async function POST(
         if (action === 'approve') {
             submission = await service.approveResubmission(submissionId, user.id);
         } else {
-            submission = await service.rejectResubmission(submissionId);
+            submission = await service.rejectResubmission(submissionId, reason);
         }
 
         return NextResponse.json({

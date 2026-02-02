@@ -34,7 +34,9 @@ export async function GET(
             submission: {
                 ...submission,
                 canResubmit: submission.resubmissionApproved === true,
-                hasPendingRequest: submission.resubmissionRequested === true && submission.resubmissionApproved !== true
+                hasPendingRequest: submission.resubmissionRequested === true && submission.resubmissionApproved !== true,
+                isRejected: submission.resubmissionRejected === true,
+                rejectionReason: submission.resubmissionRejectionReason
             }
         }, { status: 200 });
 

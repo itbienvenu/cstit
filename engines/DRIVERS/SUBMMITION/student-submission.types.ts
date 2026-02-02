@@ -10,12 +10,15 @@ export interface StudentSubmissionEntity {
     grade?: number;
     feedback?: string;
     driveFolderId?: string;
+    driveFileId?: string;
     resubmissionRequested?: boolean;
     resubmissionRequestedAt?: Date;
     resubmissionReason?: string;
     resubmissionApproved?: boolean;
     resubmissionApprovedBy?: string;
     resubmissionApprovedAt?: Date;
+    resubmissionRejected?: boolean;
+    resubmissionRejectionReason?: string;
 }
 
 export interface CreateSubmissionDTO {
@@ -24,6 +27,7 @@ export interface CreateSubmissionDTO {
     fileName: string;
     fileSize: number;
     mimeType: string;
+    driveFileId: string;
 }
 
 export interface SubmissionResponseDTO {

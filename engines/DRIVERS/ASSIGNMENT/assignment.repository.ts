@@ -24,7 +24,8 @@ export class AssignmentRepository {
 
     async findById(id: string): Promise<AssignmentEntity | null> {
         const doc = await this.collection.findOne({
-            _id: new ObjectId(id)
+            _id: new ObjectId(id),
+            deletedAt: { $exists: false }
         });
 
         if (!doc) return null;
@@ -34,7 +35,7 @@ export class AssignmentRepository {
 
     async findByClassId(classId: string): Promise<AssignmentEntity[]> {
         const docs = await this.collection
-            .find({ classId })
+            .find({ classId, deletedAt: { $exists: false } })
             .sort({ deadlineAt: 1 })
             .toArray();
 
@@ -50,6 +51,18 @@ export class AssignmentRepository {
             {
                 $set: {
                     ...update,
+                    updatedAt: new Date()
+                }
+            }
+        );
+    }
+
+    async softDeleteById(id: string): Promise<void> {
+        await this.collection.updateOne(
+            { _id: new ObjectId(id) },
+            {
+                $set: {
+                    deletedAt: new Date(),
                     updatedAt: new Date()
                 }
             }
@@ -87,7 +100,8 @@ export class AssignmentRepository {
             submissionMethod: doc.submissionMethod || 'LINK', // Default to LINK for legacy
             submissionLink: doc.submissionLink,
             createdAt: doc.createdAt,
-            updatedAt: doc.updatedAt
+            updatedAt: doc.updatedAt,
+            deletedAt: doc.deletedAt
         };
     }
 }

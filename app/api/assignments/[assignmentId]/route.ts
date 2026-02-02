@@ -79,3 +79,34 @@ export async function PUT(
         return NextResponse.json({ message: err.message }, { status: 400 });
     }
 }
+
+export async function DELETE(
+    req: Request,
+    { params }: RouteParams
+) {
+    try {
+        const user = await getUserFromHeader() as any;
+        if (!user) {
+            return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+        }
+
+        const { assignmentId } = await params;
+
+        const db = await getDb();
+        const assignmentCollection = db.collection("assignments") as any;
+        const repository = new AssignmentRepository(assignmentCollection);
+        const driveService = new GoogleDriveService();
+        const service = new AssignmentServiceImpl(repository, classMembershipChecker, driveService);
+
+        await service.deleteAssignment(user.id, assignmentId);
+        return NextResponse.json({ message: "Assignment deleted successfully" });
+    } catch (err: any) {
+        if (err.message === 'Assignment not found') {
+            return NextResponse.json({ message: err.message }, { status: 404 });
+        }
+        if (err.message === 'Not authorized' || err.message === 'User is not class rep') {
+            return NextResponse.json({ message: err.message }, { status: 403 });
+        }
+        return NextResponse.json({ message: err.message }, { status: 400 });
+    }
+}

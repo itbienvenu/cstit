@@ -109,4 +109,20 @@ export class GoogleDriveService {
             throw error;
         }
     }
+
+    /**
+     * Deletes a file by its ID
+     */
+    async deleteFile(fileId: string): Promise<void> {
+        try {
+            await this.drive.files.delete({
+                fileId: fileId,
+            });
+            console.log(`[GoogleDriveService] Successfully deleted file ${fileId}`);
+        } catch (error: any) {
+            console.error(`[GoogleDriveService] Error deleting file ${fileId}:`, error);
+            // We don't necessarily want to throw and block everything if deletion fails, 
+            // but for now, let's keep it observable.
+        }
+    }
 }

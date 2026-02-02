@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, useQueries } from "@tanstack/react-query";
 import {
     Box,
     Card,
@@ -15,7 +15,10 @@ import {
     DialogContent,
     DialogActions,
     LinearProgress,
-    Alert
+    Alert,
+    Skeleton,
+    Tabs,
+    Tab
 } from "@mui/material";
 import { AssignmentResponseDTO } from "@/engines/DRIVERS/ASSIGNMENT/assignment.types";
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
@@ -26,6 +29,7 @@ import { fetchAssignments, fetchSubmissionStatus, submitAssignment, requestResub
 
 export default function StudentAssignmentList() {
     const queryClient = useQueryClient();
+    const [tabValue, setTabValue] = useState(0);
     const [uploadAssignment, setUploadAssignment] = useState<AssignmentResponseDTO | null>(null);
     const [file, setFile] = useState<File | null>(null);
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -36,24 +40,30 @@ export default function StudentAssignmentList() {
     const { data: assignments = [], isLoading: assignmentsLoading } = useQuery({
         queryKey: ['assignments'],
         queryFn: fetchAssignments,
-        staleTime: 5 * 60 * 1000, // 5 minutes
+        staleTime: 5 * 60 * 1000,
     });
 
-    // Fetch submission status for all assignments
-    const submissionQueries = assignments.map((assignment: AssignmentResponseDTO) => {
-        // eslint-disable-next-line react-hooks/rules-of-hooks
-        return useQuery({
+    const submissionQueries = useQueries({
+        queries: assignments.map((assignment: AssignmentResponseDTO) => ({
             queryKey: ['submissionStatus', assignment.id],
             queryFn: () => fetchSubmissionStatus(assignment.id),
-            staleTime: 30 * 1000, // 30 seconds (more dynamic)
+            staleTime: 30 * 1000,
             enabled: !!assignment.id,
-        });
+        }))
     });
 
-    // Create a submission status map
     const submissionStatus: Record<string, any> = {};
     assignments.forEach((assignment: AssignmentResponseDTO, index: number) => {
         submissionStatus[assignment.id] = submissionQueries[index]?.data;
+    });
+
+    const filteredAssignments = assignments.filter((assignment: AssignmentResponseDTO) => {
+        const status = submissionStatus[assignment.id]?.submission;
+        if (tabValue === 0) return true; // All
+        if (tabValue === 1) return status?.hasPendingRequest; // Pending
+        if (tabValue === 2) return status?.canResubmit; // Approved
+        if (tabValue === 3) return status?.isRejected; // Rejected
+        return true;
     });
 
     // Upload mutation
@@ -112,25 +122,63 @@ export default function StudentAssignmentList() {
 
     return (
         <Box sx={{ p: 4, maxWidth: 1200, margin: "0 auto" }}>
-            <Typography variant="h4" sx={{ mb: 4, fontWeight: 'bold', background: 'linear-gradient(45deg, #FE6B8B 30%, #FF8E53 90%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                My Assignments
-            </Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4, flexWrap: 'wrap', gap: 2 }}>
+                <Typography variant="h4" sx={{ fontWeight: 'bold', background: 'linear-gradient(45deg, #FE6B8B 30%, #FF8E53 90%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                    My Assignments
+                </Typography>
+
+                <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+                    <Tabs value={tabValue} onChange={(_, val) => setTabValue(val)} variant="scrollable" scrollButtons="auto">
+                        <Tab label="All" />
+                        <Tab label="Pending Request" />
+                        <Tab label="Approved" />
+                        <Tab label="Rejected" />
+                    </Tabs>
+                </Box>
+            </Box>
+
+            {/* Loading State */}
+            {assignmentsLoading && (
+                <Grid container spacing={3}>
+                    {Array.from(new Array(6)).map((_, index) => (
+                        <Grid size={{ xs: 12, md: 6, lg: 4 }} key={index}>
+                            <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                                <CardContent sx={{ flexGrow: 1 }}>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+                                        <Skeleton variant="rounded" width={80} height={24} />
+                                        <Skeleton variant="text" width={100} />
+                                    </Box>
+                                    <Skeleton variant="text" height={32} width="80%" sx={{ mb: 1 }} />
+                                    <Skeleton variant="text" height={20} width="60%" />
+                                    <Skeleton variant="text" height={20} width="90%" sx={{ mb: 2 }} />
+
+                                    <Box sx={{ mt: 'auto' }}>
+                                        <Skeleton variant="rectangular" height={36} width="100%" sx={{ borderRadius: 1 }} />
+                                    </Box>
+                                </CardContent>
+                            </Card>
+                        </Grid>
+                    ))}
+                </Grid>
+            )}
 
             {/* Placeholder for when we hook up data */}
-            {assignments.length === 0 && (
+            {!assignmentsLoading && filteredAssignments.length === 0 && (
                 <Alert severity="info" sx={{ mb: 2 }}>
-                    No assignments found (or class ID not linked yet).
+                    No assignments found in this category.
                 </Alert>
             )}
 
             <Grid container spacing={3}>
-                {assignments.map((assignment: AssignmentResponseDTO) => (
+                {filteredAssignments.map((assignment: AssignmentResponseDTO) => (
                     <Grid size={{ xs: 12, md: 6, lg: 4 }} key={assignment.id}>
                         <Card sx={{
                             height: '100%',
                             display: 'flex',
                             flexDirection: 'column',
                             transition: '0.3s',
+                            border: submissionStatus[assignment.id]?.submission?.resubmissionApproved ? '2px solid' : 'none',
+                            borderColor: 'success.light',
                             '&:hover': { transform: 'translateY(-5px)', boxShadow: 6 }
                         }}>
                             <CardContent sx={{ flexGrow: 1 }}>
@@ -147,9 +195,17 @@ export default function StudentAssignmentList() {
                                 <Typography variant="h6" gutterBottom>
                                     {assignment.title}
                                 </Typography>
-                                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                                     {assignment.description}
                                 </Typography>
+
+                                {submissionStatus[assignment.id]?.submission?.isRejected && (
+                                    <Alert severity="error" sx={{ mb: 2, py: 0 }}>
+                                        <Typography variant="caption">
+                                            <strong>Rejected:</strong> {submissionStatus[assignment.id]?.submission?.rejectionReason || "No reason provided"}
+                                        </Typography>
+                                    </Alert>
+                                )}
 
                                 <Box sx={{ mt: 'auto' }}>
                                     {assignment.submissionMethod === 'LINK' ? (
@@ -166,19 +222,19 @@ export default function StudentAssignmentList() {
                                         <>
                                             {submissionStatus[assignment.id]?.submitted ? (
                                                 <>
-                                                    {submissionStatus[assignment.id]?.hasPendingRequest ? (
+                                                    {submissionStatus[assignment.id]?.submission?.hasPendingRequest ? (
                                                         <Alert severity="warning" icon={<CheckCircleIcon />}>
                                                             Resubmission request pending approval
                                                         </Alert>
-                                                    ) : submissionStatus[assignment.id]?.canResubmit ? (
+                                                    ) : submissionStatus[assignment.id]?.submission?.canResubmit ? (
                                                         <Button
                                                             variant="contained"
                                                             startIcon={<CloudUploadIcon />}
                                                             onClick={() => setUploadAssignment(assignment)}
                                                             fullWidth
-                                                            sx={{ background: 'linear-gradient(45deg, #FF8E53 30%, #FE6B8B 90%)' }}
+                                                            sx={{ background: 'linear-gradient(45deg, #4CAF50 30%, #8BC34A 90%)' }}
                                                         >
-                                                            Resubmit File
+                                                            Re-upload File
                                                         </Button>
                                                     ) : (
                                                         <>
@@ -191,7 +247,7 @@ export default function StudentAssignmentList() {
                                                                 fullWidth
                                                                 size="small"
                                                             >
-                                                                Request Resubmission
+                                                                {submissionStatus[assignment.id]?.submission?.isRejected ? "Request Resubmission Again" : "Request Resubmission"}
                                                             </Button>
                                                         </>
                                                     )}
@@ -219,7 +275,7 @@ export default function StudentAssignmentList() {
             {/* Upload/Resubmission Dialog */}
             <Dialog open={!!uploadAssignment} onClose={() => !uploadMutation.isPending && !resubmissionMutation.isPending && setUploadAssignment(null)} maxWidth="sm" fullWidth>
                 <DialogTitle>
-                    {uploadAssignment && submissionStatus[uploadAssignment.id]?.submitted && !submissionStatus[uploadAssignment.id]?.canResubmit
+                    {uploadAssignment && submissionStatus[uploadAssignment.id]?.submitted && !submissionStatus[uploadAssignment.id]?.submission?.canResubmit
                         ? "Request Resubmission Permission"
                         : "Submit Assignment"
                     }
@@ -229,7 +285,7 @@ export default function StudentAssignmentList() {
                         {uploadAssignment?.title && <strong>{uploadAssignment.title}</strong>}
                     </Typography>
 
-                    {uploadAssignment && submissionStatus[uploadAssignment.id]?.submitted && !submissionStatus[uploadAssignment.id]?.canResubmit ? (
+                    {uploadAssignment && submissionStatus[uploadAssignment.id]?.submitted && !submissionStatus[uploadAssignment.id]?.submission?.canResubmit ? (
                         <>
                             <Typography variant="body2" color="text.secondary" sx={{ mt: 2, mb: 2 }}>
                                 You have already submitted this assignment. Please provide a reason for requesting resubmission permission:
@@ -270,7 +326,7 @@ export default function StudentAssignmentList() {
                     <Button onClick={() => { setUploadAssignment(null); setErrorMsg(null); setResubmissionReason(""); }} disabled={uploadMutation.isPending || resubmissionMutation.isPending}>
                         Cancel
                     </Button>
-                    {uploadAssignment && submissionStatus[uploadAssignment.id]?.submitted && !submissionStatus[uploadAssignment.id]?.canResubmit ? (
+                    {uploadAssignment && submissionStatus[uploadAssignment.id]?.submitted && !submissionStatus[uploadAssignment.id]?.submission?.canResubmit ? (
                         <Button
                             onClick={handleRequestResubmission}
                             variant="contained"

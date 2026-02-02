@@ -21,12 +21,15 @@ export class SubmissionRepository {
             grade: submission.grade,
             feedback: submission.feedback,
             driveFolderId: submission.driveFolderId,
+            driveFileId: submission.driveFileId,
             resubmissionRequested: submission.resubmissionRequested || false,
             resubmissionRequestedAt: submission.resubmissionRequestedAt,
             resubmissionReason: submission.resubmissionReason,
             resubmissionApproved: submission.resubmissionApproved || false,
             resubmissionApprovedBy: submission.resubmissionApprovedBy,
-            resubmissionApprovedAt: submission.resubmissionApprovedAt
+            resubmissionApprovedAt: submission.resubmissionApprovedAt,
+            resubmissionRejected: submission.resubmissionRejected || false,
+            resubmissionRejectionReason: submission.resubmissionRejectionReason
         });
     }
 
@@ -63,12 +66,15 @@ export class SubmissionRepository {
                     grade: submission.grade,
                     feedback: submission.feedback,
                     driveFolderId: submission.driveFolderId,
+                    driveFileId: submission.driveFileId,
                     resubmissionRequested: submission.resubmissionRequested,
                     resubmissionRequestedAt: submission.resubmissionRequestedAt,
                     resubmissionReason: submission.resubmissionReason,
                     resubmissionApproved: submission.resubmissionApproved,
                     resubmissionApprovedBy: submission.resubmissionApprovedBy,
-                    resubmissionApprovedAt: submission.resubmissionApprovedAt
+                    resubmissionApprovedAt: submission.resubmissionApprovedAt,
+                    resubmissionRejected: submission.resubmissionRejected,
+                    resubmissionRejectionReason: submission.resubmissionRejectionReason
                 }
             }
         );
@@ -104,12 +110,15 @@ export class SubmissionRepository {
             grade: doc.grade,
             feedback: doc.feedback,
             driveFolderId: doc.driveFolderId,
+            driveFileId: doc.driveFileId,
             resubmissionRequested: doc.resubmissionRequested,
             resubmissionRequestedAt: doc.resubmissionRequestedAt,
             resubmissionReason: doc.resubmissionReason,
             resubmissionApproved: doc.resubmissionApproved,
             resubmissionApprovedBy: doc.resubmissionApprovedBy,
-            resubmissionApprovedAt: doc.resubmissionApprovedAt
+            resubmissionApprovedAt: doc.resubmissionApprovedAt,
+            resubmissionRejected: doc.resubmissionRejected,
+            resubmissionRejectionReason: doc.resubmissionRejectionReason
         };
     }
 }

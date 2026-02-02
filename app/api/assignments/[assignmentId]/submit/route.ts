@@ -39,6 +39,13 @@ export async function POST(
 
             const assignmentFolderId = await driveService.getOrCreateFolder(assignmentId, rootFolderId);
 
+            // Check if we already have a submission to replace (for approved resubmission)
+            const existingSubmission = await service.getStudentSubmission(user.id, assignmentId);
+            if (existingSubmission && existingSubmission.resubmissionApproved && existingSubmission.driveFileId) {
+                console.log(`[SubmissionRoute] Deleting old file ${existingSubmission.driveFileId} before resubmission`);
+                await driveService.deleteFile(existingSubmission.driveFileId);
+            }
+
             const buffer = Buffer.from(await file.arrayBuffer());
             const stream = Readable.from(buffer);
             const filename = file.name.replace(/\s/g, '_');
@@ -55,7 +62,8 @@ export async function POST(
                 fileName: filename,
                 fileSize: file.size,
                 mimeType: file.type,
-                driveFolderId: assignmentFolderId
+                driveFolderId: assignmentFolderId,
+                driveFileId: uploadResult.id
             });
 
             return NextResponse.json(submission, { status: 201 });

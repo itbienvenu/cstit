@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import PostList from '@/components/PostList';
+import PostCardSkeleton from '@/components/skeletons/PostCardSkeleton';
 import Navbar from '@/components/Navbar';
 import { Box, Typography, Container, CircularProgress, Alert, TextField, Button } from '@mui/material';
 import { Post } from '@/lib/schemas';
@@ -104,8 +105,10 @@ export default function Home() {
             {/* Main Feed Column */}
             <Box>
               {loading ? (
-                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-                  <CircularProgress />
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, mt: 4 }}>
+                  {Array.from(new Array(3)).map((_, index) => (
+                    <PostCardSkeleton key={index} />
+                  ))}
                 </Box>
               ) : error ? (
                 <Alert severity="info" sx={{ mt: 2 }}>{error}</Alert>

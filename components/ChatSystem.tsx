@@ -31,6 +31,7 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import { ConversationSkeleton, MessageSkeleton } from './skeletons/ChatSkeleton';
 
 interface User {
     _id: string;
@@ -66,7 +67,8 @@ export default function ChatSystem() {
     const [messages, setMessages] = React.useState<Message[]>([]);
     const [newMessage, setNewMessage] = React.useState('');
     const [currentUser, setCurrentUser] = React.useState<any>(null);
-    const [loading, setLoading] = React.useState(false);
+    const [loadingConversations, setLoadingConversations] = React.useState(true);
+    const [loadingMessages, setLoadingMessages] = React.useState(false);
 
     // New Chat Dialog
     const [openNewChat, setOpenNewChat] = React.useState(false);
@@ -120,12 +122,17 @@ export default function ChatSystem() {
             }
         } catch (error) {
             console.error('Error fetching conversations:', error);
+        } finally {
+            setLoadingConversations(false);
         }
     };
 
     const fetchMessages = async (convId: string) => {
         const token = localStorage.getItem('token');
         if (!token) return;
+        // Only set loading if it's a fresh fetch (not polling)
+        if (messages.length === 0) setLoadingMessages(true);
+
         try {
             const res = await fetch(`/api/chat/messages?conversationId=${convId}`, {
                 headers: { Authorization: `Bearer ${token}` }
@@ -136,6 +143,8 @@ export default function ChatSystem() {
             }
         } catch (error) {
             console.error('Error fetching messages:', error);
+        } finally {
+            setLoadingMessages(false);
         }
     };
 
@@ -300,41 +309,50 @@ export default function ChatSystem() {
                     </IconButton>
                 </Box>
                 <Divider sx={{ borderColor: 'rgba(0, 255, 0, 0.1)' }} />
-                <List sx={{ flexGrow: 1, overflow: 'auto' }}>
-                    {conversations.map((conv) => (
-                        <ListItem key={conv._id} disablePadding>
-                            <ListItemButton
-                                onClick={() => setSelectedConversation(conv)}
-                                selected={selectedConversation?._id === conv._id}
-                                sx={{
-                                    '&.Mui-selected': { bgcolor: 'rgba(0, 255, 0, 0.1)' },
-                                    '&:hover': { bgcolor: 'rgba(0, 255, 0, 0.05)' }
-                                }}
-                            >
-                                <ListItemAvatar>
-                                    <Avatar sx={{ bgcolor: 'secondary.main', color: 'black' }}>
-                                        {conv.otherUser.name.charAt(0).toUpperCase()}
-                                    </Avatar>
-                                </ListItemAvatar>
-                                <ListItemText
-                                    primary={conv.otherUser.name}
-                                    secondary={conv.unreadCount > 0 ? (conv.lastMessage === 'Encrypted Message' ? 'Encrypted Message' : 'New Message') : conv.lastMessage === 'Encrypted Message' ? 'Encrypted' : 'Opened'}
-                                    primaryTypographyProps={{ fontWeight: conv.unreadCount > 0 ? 'bold' : 'normal', color: 'text.primary' }}
-                                    secondaryTypographyProps={{ color: 'text.secondary', fontFamily: 'monospace' }}
-                                />
-                                {conv.unreadCount > 0 && (
-                                    <Badge badgeContent={conv.unreadCount} color="error" />
-                                )}
-                            </ListItemButton>
-                        </ListItem>
-                    ))}
-                    {conversations.length === 0 && (
-                        <Box sx={{ p: 3, textAlign: 'center', color: 'text.secondary' }}>
-                            <Typography variant="body2">No conversations yet.</Typography>
-                            <Button size="small" onClick={handleNewChatOpen} sx={{ mt: 1, color: 'primary.main' }}>Start one</Button>
-                        </Box>
-                    )}
-                </List>
+                <Divider sx={{ borderColor: 'rgba(0, 255, 0, 0.1)' }} />
+                {loadingConversations ? (
+                    <ConversationSkeleton />
+                ) : (
+                    <List sx={{ flexGrow: 1, overflow: 'auto' }}>
+                        {conversations.map((conv) => (
+                            <ListItem key={conv._id} disablePadding>
+                                <ListItemButton
+                                    onClick={() => {
+                                        setSelectedConversation(conv);
+                                        setMessages([]); // Clear previous messages
+                                        setLoadingMessages(true); // Trigger loading for new messages
+                                    }}
+                                    selected={selectedConversation?._id === conv._id}
+                                    sx={{
+                                        '&.Mui-selected': { bgcolor: 'rgba(0, 255, 0, 0.1)' },
+                                        '&:hover': { bgcolor: 'rgba(0, 255, 0, 0.05)' }
+                                    }}
+                                >
+                                    <ListItemAvatar>
+                                        <Avatar sx={{ bgcolor: 'secondary.main', color: 'black' }}>
+                                            {conv.otherUser.name.charAt(0).toUpperCase()}
+                                        </Avatar>
+                                    </ListItemAvatar>
+                                    <ListItemText
+                                        primary={conv.otherUser.name}
+                                        secondary={conv.unreadCount > 0 ? (conv.lastMessage === 'Encrypted Message' ? 'Encrypted Message' : 'New Message') : conv.lastMessage === 'Encrypted Message' ? 'Encrypted' : 'Opened'}
+                                        primaryTypographyProps={{ fontWeight: conv.unreadCount > 0 ? 'bold' : 'normal', color: 'text.primary' }}
+                                        secondaryTypographyProps={{ color: 'text.secondary', fontFamily: 'monospace' }}
+                                    />
+                                    {conv.unreadCount > 0 && (
+                                        <Badge badgeContent={conv.unreadCount} color="error" />
+                                    )}
+                                </ListItemButton>
+                            </ListItem>
+                        ))}
+                        {conversations.length === 0 && (
+                            <Box sx={{ p: 3, textAlign: 'center', color: 'text.secondary' }}>
+                                <Typography variant="body2">No conversations yet.</Typography>
+                                <Button size="small" onClick={handleNewChatOpen} sx={{ mt: 1, color: 'primary.main' }}>Start one</Button>
+                            </Box>
+                        )}
+                    </List>
+                )}
             </Box>
 
             {/* Chat Area */}
@@ -365,52 +383,60 @@ export default function ChatSystem() {
                             </Typography>
                         </Box>
 
-                        {/* Messages */}
-                        <Box sx={{ flexGrow: 1, p: 2, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 1 }}>
-                            {messages.map((msg) => {
-                                const isMe = msg.senderId === currentUser?.id;
-                                if (msg.deletedFor?.includes(currentUser?.id)) return null;
 
-                                return (
-                                    <Box
-                                        key={msg._id}
-                                        sx={{
-                                            alignSelf: isMe ? 'flex-end' : 'flex-start',
-                                            maxWidth: '70%',
-                                            display: 'flex',
-                                            alignItems: 'flex-start',
-                                            flexDirection: isMe ? 'row-reverse' : 'row',
-                                        }}
-                                    >
-                                        <Box sx={{
-                                            bgcolor: isMe ? 'rgba(0, 255, 0, 0.15)' : 'rgba(255, 255, 255, 0.05)',
-                                            color: 'text.primary',
-                                            p: 1.5,
-                                            borderRadius: 2,
-                                            borderBottomRightRadius: isMe ? 0 : 2,
-                                            borderBottomLeftRadius: isMe ? 2 : 0,
-                                            border: '1px solid',
-                                            borderColor: isMe ? 'primary.main' : 'rgba(255, 255, 255, 0.1)',
-                                            position: 'relative'
-                                        }}>
-                                            <Typography variant="body1" sx={{ fontFamily: 'monospace' }}>
-                                                {msg.isDeleted ? <span style={{ fontStyle: 'italic', opacity: 0.5 }}>This message was deleted</span> : msg.content}
-                                                {msg.isEdited && !msg.isDeleted && <span style={{ fontSize: '0.7em', color: 'gray', marginLeft: 8 }}>(edited)</span>}
-                                            </Typography>
-                                            <Typography variant="caption" sx={{ display: 'block', mt: 0.5, textAlign: 'right', opacity: 0.5, fontSize: '0.7rem' }}>
-                                                {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                            </Typography>
+
+                        {/* Messages */}
+                        {loadingMessages && messages.length === 0 ? (
+                            <Box sx={{ flexGrow: 1, overflow: 'hidden' }}>
+                                <MessageSkeleton />
+                            </Box>
+                        ) : (
+                            <Box sx={{ flexGrow: 1, p: 2, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                {messages.map((msg) => {
+                                    const isMe = msg.senderId === currentUser?.id;
+                                    if (msg.deletedFor?.includes(currentUser?.id)) return null;
+
+                                    return (
+                                        <Box
+                                            key={msg._id}
+                                            sx={{
+                                                alignSelf: isMe ? 'flex-end' : 'flex-start',
+                                                maxWidth: '70%',
+                                                display: 'flex',
+                                                alignItems: 'flex-start',
+                                                flexDirection: isMe ? 'row-reverse' : 'row',
+                                            }}
+                                        >
+                                            <Box sx={{
+                                                bgcolor: isMe ? 'rgba(0, 255, 0, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                                                color: 'text.primary',
+                                                p: 1.5,
+                                                borderRadius: 2,
+                                                borderBottomRightRadius: isMe ? 0 : 2,
+                                                borderBottomLeftRadius: isMe ? 2 : 0,
+                                                border: '1px solid',
+                                                borderColor: isMe ? 'primary.main' : 'rgba(255, 255, 255, 0.1)',
+                                                position: 'relative'
+                                            }}>
+                                                <Typography variant="body1" sx={{ fontFamily: 'monospace' }}>
+                                                    {msg.isDeleted ? <span style={{ fontStyle: 'italic', opacity: 0.5 }}>This message was deleted</span> : msg.content}
+                                                    {msg.isEdited && !msg.isDeleted && <span style={{ fontSize: '0.7em', color: 'gray', marginLeft: 8 }}>(edited)</span>}
+                                                </Typography>
+                                                <Typography variant="caption" sx={{ display: 'block', mt: 0.5, textAlign: 'right', opacity: 0.5, fontSize: '0.7rem' }}>
+                                                    {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                </Typography>
+                                            </Box>
+                                            {isMe && !msg.isDeleted && (
+                                                <IconButton size="small" onClick={(e) => handleMenuClick(e, msg)} sx={{ opacity: 0.5, ml: 0.5, mr: 0.5 }}>
+                                                    <MoreVertIcon fontSize="small" />
+                                                </IconButton>
+                                            )}
                                         </Box>
-                                        {isMe && !msg.isDeleted && (
-                                            <IconButton size="small" onClick={(e) => handleMenuClick(e, msg)} sx={{ opacity: 0.5, ml: 0.5, mr: 0.5 }}>
-                                                <MoreVertIcon fontSize="small" />
-                                            </IconButton>
-                                        )}
-                                    </Box>
-                                );
-                            })}
-                            <div ref={messagesEndRef} />
-                        </Box>
+                                    );
+                                })}
+                                <div ref={messagesEndRef} />
+                            </Box>
+                        )}
 
                         {/* Input Area */}
                         <Box component="form" onSubmit={handleSendMessage} sx={{ p: 2, bgcolor: 'rgba(0, 0, 0, 0.3)', borderTop: 1, borderColor: 'rgba(0, 255, 0, 0.1)', display: 'flex', gap: 1 }}>
@@ -497,6 +523,6 @@ export default function ChatSystem() {
                 </DialogContent>
             </Dialog>
 
-        </Box>
+        </Box >
     );
 }

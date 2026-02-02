@@ -32,7 +32,8 @@ export class SubmissionService {
             fileSize: dto.fileSize,
             mimeType: dto.mimeType,
             submittedAt: new Date(),
-            driveFolderId: dto.driveFolderId
+            driveFolderId: dto.driveFolderId,
+            driveFileId: dto.driveFileId
         };
 
         await this.submissionRepository.insert(submission);
@@ -61,6 +62,7 @@ export class SubmissionService {
         submission.resubmissionRequested = true;
         submission.resubmissionRequestedAt = new Date();
         submission.resubmissionReason = reason;
+        submission.resubmissionRejected = false; // Clear rejection if re-requesting
 
         await this.submissionRepository.update(submission.id, submission);
         return submission;
@@ -80,12 +82,13 @@ export class SubmissionService {
         submission.resubmissionApproved = true;
         submission.resubmissionApprovedBy = classRepId;
         submission.resubmissionApprovedAt = new Date();
+        submission.resubmissionRejected = false;
 
         await this.submissionRepository.update(submissionId, submission);
         return submission;
     }
 
-    async rejectResubmission(submissionId: string): Promise<StudentSubmissionEntity> {
+    async rejectResubmission(submissionId: string, reason?: string): Promise<StudentSubmissionEntity> {
         const submission = await this.submissionRepository.findById(submissionId);
 
         if (!submission) {
@@ -93,8 +96,9 @@ export class SubmissionService {
         }
 
         submission.resubmissionRequested = false;
-        submission.resubmissionRequestedAt = undefined;
-        submission.resubmissionReason = undefined;
+        submission.resubmissionApproved = false;
+        submission.resubmissionRejected = true;
+        submission.resubmissionRejectionReason = reason;
 
         await this.submissionRepository.update(submissionId, submission);
         return submission;

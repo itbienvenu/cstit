@@ -151,6 +151,29 @@ export class AssignmentServiceImpl implements AssignmentServiceImpl {
         return assignment;
     }
 
+    async deleteAssignment(
+        userId: string,
+        assignmentId: string
+    ): Promise<void> {
+        const assignment = await this.assignmentRepository.findById(assignmentId);
+
+        if (!assignment) {
+            throw new Error('Assignment not found');
+        }
+
+        const isRep = await this.classMembershipChecker(
+            userId,
+            assignment.classId,
+            'class_rep'
+        );
+
+        if (!isRep) {
+            throw new Error('Not authorized');
+        }
+
+        await this.assignmentRepository.softDeleteById(assignmentId);
+    }
+
     async closeExpiredAssignments(): Promise<number> {
         return this.assignmentRepository.closeExpired(new Date());
     }

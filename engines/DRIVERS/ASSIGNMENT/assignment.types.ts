@@ -13,6 +13,7 @@ export interface AssignmentEntity {
     submissionLink?: string; // Used if method is LINK
     createdAt: Date;
     updatedAt: Date;
+    deletedAt?: Date;
 }
 
 export interface CreateAssignmentDTO {
