@@ -7,55 +7,36 @@ export class GoogleDriveService {
     private drive;
 
     constructor() {
-        const clientEmail = process.env.GOOGLE_CLIENT_EMAIL;
-        const privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
-        const impersonatedUser = process.env.GOOGLE_DRIVE_IMPERSONATED_USER_EMAIL;
+        const clientId = process.env.CLIENT_ID;
+        const clientSecret = process.env.CLIENT_SECRET;
+        const refreshToken = process.env.GOOGLE_DRIVE_REFRESH_TOKEN;
 
-        if (!clientEmail || !privateKey) {
-            throw new Error('Missing Google Drive Credentials (GOOGLE_CLIENT_EMAIL, GOOGLE_PRIVATE_KEY)');
+        if (!clientId || !clientSecret || !refreshToken) {
+            throw new Error('Missing Google Drive OAuth Credentials (CLIENT_ID, CLIENT_SECRET, GOOGLE_DRIVE_REFRESH_TOKEN)');
         }
 
-        const authOptions: any = {
-            credentials: {
-                client_email: clientEmail,
-                private_key: privateKey,
-            },
-            scopes: SCOPES,
-        };
+        const oauth2Client = new google.auth.OAuth2(
+            clientId,
+            clientSecret,
+            process.env.REDIRECT_URI || 'https://developers.google.com/oauthplayground'
+        );
 
-        if (impersonatedUser) {
-            authOptions.clientOptions = {
-                subject: impersonatedUser,
-                timeout: 30000,
-            };
-        } else {
-            authOptions.clientOptions = {
-                timeout: 30000,
-            };
-        }
-
-        const auth = new google.auth.GoogleAuth(authOptions);
+        oauth2Client.setCredentials({
+            refresh_token: refreshToken,
+        });
 
         this.drive = google.drive({
             version: 'v3',
-            auth,
+            auth: oauth2Client,
         });
 
-        console.log(`[GoogleDriveService] Initialized with Service Account: ${clientEmail}`);
-        if (impersonatedUser) {
-            console.log(`[GoogleDriveService] Impersonating User: ${impersonatedUser}`);
-        }
+        console.log(`[GoogleDriveService] Initialized with OAuth 2.0`);
     }
 
     /**
      * Creates a folder or returns existing one if found by name in the parent
      */
     async getOrCreateFolder(folderName: string, parentId?: string): Promise<string> {
-        if (!parentId) {
-            console.error('[GoogleDriveService] WARNING: No parentId provided for folder creation. Service accounts cannot create root folders.');
-        }
-
-        // 1. Check if exists
         let query = `mimeType='application/vnd.google-apps.folder' and name='${folderName}' and trashed=false`;
         if (parentId) {
             query += ` and '${parentId}' in parents`;
@@ -66,15 +47,12 @@ export class GoogleDriveService {
                 q: query,
                 fields: 'files(id, name)',
                 spaces: 'drive',
-                supportsAllDrives: true,
-                includeItemsFromAllDrives: true,
             });
 
             if (res.data.files && res.data.files.length > 0) {
                 return res.data.files[0].id!;
             }
 
-            // 2. Create if not exists
             const fileMetadata: any = {
                 name: folderName,
                 mimeType: 'application/vnd.google-apps.folder',
@@ -82,15 +60,11 @@ export class GoogleDriveService {
 
             if (parentId) {
                 fileMetadata.parents = [parentId];
-            } else {
-                // If no parent is provided, this will likely fail for service accounts
-                console.warn('[GoogleDriveService] Attempting to create folder in root. This will fail if the service account has no storage quota.');
             }
 
             const file = await this.drive.files.create({
                 requestBody: fileMetadata,
                 fields: 'id',
-                supportsAllDrives: true,
             });
 
             return file.data.id!;
@@ -124,7 +98,6 @@ export class GoogleDriveService {
                 requestBody: fileMetadata,
                 media: media,
                 fields: 'id, webViewLink',
-                supportsAllDrives: true,
             });
 
             return {

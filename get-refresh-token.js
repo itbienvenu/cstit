@@ -1,9 +1,11 @@
-
+require('dotenv').config();
 const { google } = require('googleapis');
 const readline = require('readline');
 
-// CONFIGURATION
-const { CLIENT_SECRET, CLIENT_ID, REDIRECT_URI } = process.env;
+// CONFIGURATION - Use localhost for easier OAuth flow
+const CLIENT_ID = process.env.CLIENT_ID;
+const CLIENT_SECRET = process.env.CLIENT_SECRET;
+const REDIRECT_URI = 'http://localhost:3000/api/auth/callback';
 
 const oauth2Client = new google.auth.OAuth2(
     CLIENT_ID,
@@ -16,7 +18,7 @@ const SCOPES = ['https://www.googleapis.com/auth/drive'];
 const authUrl = oauth2Client.generateAuthUrl({
     access_type: 'offline', // Critical for getting a Refresh Token
     scope: SCOPES,
-    prompt: 'consent' // Force consent to ensure refresh token is returned
+    prompt: 'select_account consent' // Force account selection AND consent
 });
 
 console.log('Authorize this app by visiting this url:');
@@ -26,10 +28,11 @@ console.log('--------------------------------------------------');
 console.log('\nSteps:');
 console.log('1. Open the URL above in your browser.');
 console.log('2. Log in with YOUR @gmail.com account (the one that owns the folder).');
-console.log('3. "Continue" through any warnings (since this is your own dev app).');
-console.log('4. You will be redirected to OAuth Playground.');
-console.log('5. Look at the "Authorization code" box on the left (or in the URL bar ?code=...).');
-console.log('6. Copy that CODE and paste it here:');
+console.log('3. Click "Continue" or "Advanced" -> "Go to [app name] (unsafe)"');
+console.log('4. Grant permissions for Google Drive access.');
+console.log('5. You will be redirected to localhost (page may not load - THAT\'S OK!).');
+console.log('6. Look at the URL bar and copy everything after "?code=" up to (but not including) "&scope"');
+console.log('7. Paste that CODE here:');
 
 const rl = readline.createInterface({
     input: process.stdin,
