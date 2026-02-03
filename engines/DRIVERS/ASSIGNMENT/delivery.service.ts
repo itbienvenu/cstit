@@ -84,11 +84,11 @@ export class DeliveryService {
         const sizeInMB = zipBuffer.length / (1024 * 1024);
 
         // Mask sender as Class Rep if found
-        const fromName = classRep ? `${classRep.name} (Class Rep via URCSTIT)` : 'URCSTIT Blog App';
+        const fromName = classRep ? `${classRep.name} (Class Rep)` : 'STUBLG';
         const replyToEmail = classRep?.email || process.env.SMTP_EMAIL;
 
         const mailOptions: any = {
-            from: `"${fromName}" <${process.env.SMTP_EMAIL}>`,
+            from: `"${fromName}" <${replyToEmail}>`,
             replyTo: replyToEmail,
             to: assignment.lecturerEmail,
             subject: `[Submissions] All submissions for: ${assignment.title}`,
@@ -110,7 +110,7 @@ export class DeliveryService {
             // If too large, we would ideally upload to drive and send a link.
             // For now, let's just warn or send a link to the existing download endpoint.
             const downloadLink = `${process.env.NEXT_PUBLIC_APP_URL}/api/assignments/${assignment._id}/download-all`;
-            mailOptions.text += `\n\n⚠️ The ZIP file was too large to attach (${sizeInMB.toFixed(2)} MB).\nYou can download it directly here: ${downloadLink}`;
+            mailOptions.text += `\n\n The ZIP file was too large to attach (${sizeInMB.toFixed(2)} MB).\nYou can download it directly here: ${downloadLink}`;
         }
 
         await transporter.sendMail(mailOptions);
