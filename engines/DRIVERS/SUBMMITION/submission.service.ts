@@ -1,6 +1,17 @@
 import { ObjectId } from 'mongodb';
 import { StudentSubmissionEntity, CreateSubmissionDTO } from './student-submission.types';
 import { SubmissionRepository } from './submission.repository';
+import { GoogleDriveService } from '@/lib/drive';
+import JSZip from 'jszip';
+import { Readable } from 'stream';
+
+const streamToBuffer = async (stream: Readable): Promise<Buffer> => {
+    const chunks = [];
+    for await (const chunk of stream) {
+        chunks.push(chunk);
+    }
+    return Buffer.concat(chunks);
+};
 
 export class SubmissionService {
     constructor(private readonly submissionRepository: SubmissionRepository) { }
@@ -106,5 +117,55 @@ export class SubmissionService {
 
     async getPendingResubmissionRequests(assignmentId: string): Promise<StudentSubmissionEntity[]> {
         return this.submissionRepository.findPendingResubmissions(assignmentId);
+    }
+
+    async generateSubmissionsZip(assignmentId: string, studentMap: Map<string, string>): Promise<Buffer> {
+        const submissions = await this.submissionRepository.findByAssignmentId(assignmentId);
+        const driveService = new GoogleDriveService();
+        const zip = new JSZip();
+
+        // Filter out submissions without files or duplicates (keep latest? findByAssignmentId sorts by submittedAt desc, so we might have multiple? No, repo usually returns one per student? No, it returns all. Logic usually enforces one active submission.)
+        // But let's assume one per student for now or just zip them all.
+        // Actually findByAssignmentId returns array.
+
+        const folderName = `assignment_${assignmentId}_submissions`;
+        const folder = zip.folder(folderName);
+
+        if (!folder) {
+            throw new Error("Failed to create zip folder");
+        }
+
+        const processedFiles = new Set<string>();
+
+        await Promise.all(submissions.map(async (submission) => {
+            if (!submission.driveFileId) return;
+
+            try {
+                const studentName = studentMap.get(submission.studentId) || 'Unknown_Student';
+                const sanitizedStudentName = studentName.replace(/[^a-zA-Z0-9_-]/g, '_');
+                const originalName = submission.fileName || 'submission';
+
+                // Create unique filename: StudentName_OriginalName
+                let fileName = `${sanitizedStudentName}_${originalName}`;
+
+                // Handle duplicates
+                let counter = 1;
+                while (processedFiles.has(fileName)) {
+                    fileName = `${sanitizedStudentName}_${counter}_${originalName}`;
+                    counter++;
+                }
+                processedFiles.add(fileName);
+
+                const stream = await driveService.downloadFile(submission.driveFileId);
+                const buffer = await streamToBuffer(stream);
+
+                folder.file(fileName, buffer);
+            } catch (error) {
+                console.error(`Failed to download file for submission ${submission.id}:`, error);
+                folder.file(`ERROR_${submission.id}.txt`, `Failed to download file: ${error}`);
+            }
+        }));
+
+        return zip.generateAsync({ type: "nodebuffer" });
     }
 }

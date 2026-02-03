@@ -1,0 +1,10 @@
+TOMMOROW.
+
+==>  adding the feature for class_rep to choose how the assignment will be submitted
+        
+        -- like by automatically generating the zip file that can be sent to lecture later and the zip can gbe acced via the class rep email
+        -- or by using the watsapp api, so that the class rep can set the phone number and the time the file will be send to teach
+        -- we can also use gmail api to send the file direclt to the lecture via email
+        -- the last otiopn can be the class rep can downoad the file and send it to the lecture.
+
+        -- this will be done by setting a cron-job that will automate the emails sending,currently i will be using the github actinos, and later i will move to vercel cron jobs ..

@@ -22,7 +22,8 @@ import {
     Alert,
     Tabs,
     Tab,
-    Skeleton
+    Skeleton,
+    CircularProgress
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import AddIcon from '@mui/icons-material/Add';
@@ -30,6 +31,7 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
 import DeleteIcon from '@mui/icons-material/Delete';
+import CloudDownloadIcon from '@mui/icons-material/CloudDownload';
 import TableSkeleton from '../skeletons/TableSkeleton';
 
 interface AdminAssignmentsProps {
@@ -47,6 +49,7 @@ export default function AdminAssignments({ user }: AdminAssignmentsProps) {
     const [activeTab, setActiveTab] = React.useState<number>(0);
     const [submissionsLoading, setSubmissionsLoading] = React.useState(false);
     const [resubmissionsLoading, setResubmissionsLoading] = React.useState(false);
+    const [isDownloading, setIsDownloading] = React.useState(false);
 
     // Form State
     const [title, setTitle] = React.useState('');
@@ -54,6 +57,9 @@ export default function AdminAssignments({ user }: AdminAssignmentsProps) {
     const [deadline, setDeadline] = React.useState('');
     const [submissionMethod, setSubmissionMethod] = React.useState('LINK');
     const [submissionLink, setSubmissionLink] = React.useState('');
+    const [lecturerEmail, setLecturerEmail] = React.useState('');
+    const [lecturerWhatsApp, setLecturerWhatsApp] = React.useState('');
+    const [autoSendSubmissions, setAutoSendSubmissions] = React.useState(false);
 
     const [editingId, setEditingId] = React.useState<string | null>(null);
 
@@ -109,7 +115,10 @@ export default function AdminAssignments({ user }: AdminAssignmentsProps) {
                     description,
                     deadlineAt: new Date(deadline).toISOString(),
                     submissionMethod,
-                    submissionLink: submissionMethod === 'LINK' ? submissionLink : undefined
+                    submissionLink: submissionMethod === 'LINK' ? submissionLink : undefined,
+                    lecturerEmail,
+                    lecturerWhatsApp,
+                    autoSendSubmissions
                 })
             });
 
@@ -141,6 +150,9 @@ export default function AdminAssignments({ user }: AdminAssignmentsProps) {
         setDeadline(formatted);
         setSubmissionMethod(assignment.submissionMethod || 'LINK');
         setSubmissionLink(assignment.submissionLink || '');
+        setLecturerEmail(assignment.lecturerEmail || '');
+        setLecturerWhatsApp(assignment.lecturerWhatsApp || '');
+        setAutoSendSubmissions(assignment.autoSendSubmissions || false);
         setEditOpen(true);
     };
 
@@ -160,7 +172,10 @@ export default function AdminAssignments({ user }: AdminAssignmentsProps) {
                     description,
                     deadlineAt: new Date(deadline).toISOString(),
                     submissionMethod,
-                    submissionLink: submissionMethod === 'LINK' ? submissionLink : undefined
+                    submissionLink: submissionMethod === 'LINK' ? submissionLink : undefined,
+                    lecturerEmail,
+                    lecturerWhatsApp,
+                    autoSendSubmissions
                 })
             });
 
@@ -282,6 +297,49 @@ export default function AdminAssignments({ user }: AdminAssignmentsProps) {
         }
     };
 
+    const handleDownloadAll = async () => {
+        if (!selectedAssignmentId) return;
+
+        setIsDownloading(true);
+        try {
+            const token = localStorage.getItem('token');
+            const res = await fetch(`/api/assignments/${selectedAssignmentId}/download-all`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            if (res.ok) {
+                // Get filename from Content-Disposition header if possible
+                const disposition = res.headers.get('Content-Disposition');
+                let filename = `submissions_${selectedAssignmentId}.zip`;
+                if (disposition && disposition.indexOf('attachment') !== -1) {
+                    const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
+                    const matches = filenameRegex.exec(disposition);
+                    if (matches != null && matches[1]) {
+                        filename = matches[1].replace(/['"]/g, '');
+                    }
+                }
+
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            } else {
+                const data = await res.json();
+                alert(data.message || "Failed to download submissions");
+            }
+        } catch (error) {
+            console.error("Download error:", error);
+            alert("An error occurred while downloading submissions");
+        } finally {
+            setIsDownloading(false);
+        }
+    };
+
     return (
         <Box>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2, alignItems: 'center' }}>
@@ -311,6 +369,9 @@ export default function AdminAssignments({ user }: AdminAssignmentsProps) {
                         setDeadline('');
                         setSubmissionLink('');
                         setSubmissionMethod('LINK');
+                        setLecturerEmail('');
+                        setLecturerWhatsApp('');
+                        setAutoSendSubmissions(false);
                         setCreateOpen(true);
                     }}
                 >
@@ -409,17 +470,29 @@ export default function AdminAssignments({ user }: AdminAssignmentsProps) {
                 <Box sx={{ mt: 4, mb: 4, p: 2, border: '1px solid #e0e0e0', borderRadius: 2 }}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                         <Typography variant="h6">Assignment Details</Typography>
-                        <Button
-                            variant="outlined"
-                            size="small"
-                            onClick={() => {
-                                setSelectedAssignmentId(null);
-                                setResubmissionRequests([]);
-                                setSubmissions([]);
-                            }}
-                        >
-                            Close
-                        </Button>
+                        <Box sx={{ display: 'flex', gap: 2 }}>
+                            <Button
+                                variant="contained"
+                                color="secondary"
+                                startIcon={isDownloading ? <CircularProgress size={20} color="inherit" /> : <CloudDownloadIcon />}
+                                onClick={handleDownloadAll}
+                                size="small"
+                                disabled={isDownloading}
+                            >
+                                {isDownloading ? 'Downloading...' : 'Download All'}
+                            </Button>
+                            <Button
+                                variant="outlined"
+                                size="small"
+                                onClick={() => {
+                                    setSelectedAssignmentId(null);
+                                    setResubmissionRequests([]);
+                                    setSubmissions([]);
+                                }}
+                            >
+                                Close
+                            </Button>
+                        </Box>
                     </Box>
 
                     <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
@@ -626,6 +699,38 @@ export default function AdminAssignments({ user }: AdminAssignmentsProps) {
                             onChange={(e) => setSubmissionLink(e.target.value)}
                         />
                     )}
+
+                    <Box sx={{ mt: 2 }}>
+                        <Typography variant="subtitle2" sx={{ mb: 1 }}>Delivery Configuration (Optional)</Typography>
+                        <TextField
+                            margin="dense"
+                            label="Lecturer Email"
+                            fullWidth
+                            placeholder="lecturer@example.com"
+                            value={lecturerEmail}
+                            onChange={(e) => setLecturerEmail(e.target.value)}
+                            sx={{ mb: 1 }}
+                        />
+                        <TextField
+                            margin="dense"
+                            label="Lecturer WhatsApp (Optional)"
+                            fullWidth
+                            placeholder="e.g., +250..."
+                            value={lecturerWhatsApp}
+                            onChange={(e) => setLecturerWhatsApp(e.target.value)}
+                            sx={{ mb: 1 }}
+                        />
+                        <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+                            <input
+                                type="checkbox"
+                                id="autoSend"
+                                checked={autoSendSubmissions}
+                                onChange={(e) => setAutoSendSubmissions(e.target.checked)}
+                                style={{ marginRight: '10px', width: '18px', height: '18px' }}
+                            />
+                            <label htmlFor="autoSend">Auto-send submissions after deadline</label>
+                        </Box>
+                    </Box>
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={() => setCreateOpen(false)}>Cancel</Button>
@@ -692,6 +797,38 @@ export default function AdminAssignments({ user }: AdminAssignmentsProps) {
                             onChange={(e) => setSubmissionLink(e.target.value)}
                         />
                     )}
+
+                    <Box sx={{ mt: 2 }}>
+                        <Typography variant="subtitle2" sx={{ mb: 1 }}>Delivery Configuration</Typography>
+                        <TextField
+                            margin="dense"
+                            label="Lecturer Email"
+                            fullWidth
+                            placeholder="lecturer@example.com"
+                            value={lecturerEmail}
+                            onChange={(e) => setLecturerEmail(e.target.value)}
+                            sx={{ mb: 1 }}
+                        />
+                        <TextField
+                            margin="dense"
+                            label="Lecturer WhatsApp (Optional)"
+                            fullWidth
+                            placeholder="e.g., +250..."
+                            value={lecturerWhatsApp}
+                            onChange={(e) => setLecturerWhatsApp(e.target.value)}
+                            sx={{ mb: 1 }}
+                        />
+                        <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+                            <input
+                                type="checkbox"
+                                id="autoSendEdit"
+                                checked={autoSendSubmissions}
+                                onChange={(e) => setAutoSendSubmissions(e.target.checked)}
+                                style={{ marginRight: '10px', width: '18px', height: '18px' }}
+                            />
+                            <label htmlFor="autoSendEdit">Auto-send submissions after deadline</label>
+                        </Box>
+                    </Box>
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={() => setEditOpen(false)}>Cancel</Button>

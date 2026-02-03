@@ -125,4 +125,20 @@ export class GoogleDriveService {
             // but for now, let's keep it observable.
         }
     }
+
+    /**
+     * Downloads a file and returns it as a Readable stream
+     */
+    async downloadFile(fileId: string): Promise<Readable> {
+        try {
+            const response = await this.drive.files.get(
+                { fileId: fileId, alt: 'media' },
+                { responseType: 'stream' }
+            );
+            return response.data;
+        } catch (error: any) {
+            console.error(`[GoogleDriveService] Error downloading file ${fileId}:`, error);
+            throw new Error(`Google Drive Download Error: ${error.message}`);
+        }
+    }
 }

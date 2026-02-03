@@ -1,0 +1,13 @@
+name: Process Assignment Deadlines
+on:
+    schedule:
+        - cron: "*/15 * * * *" # Every 15 minutes
+    workflow_dispatch: # Allow manual trigger
+
+jobs:
+    hit-api:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Hit Process Deadlines API
+              run: |
+                  curl -X GET "${{ secrets.NEXT_PUBLIC_APP_URL }}/api/cron/process-deadlines?secret=${{ secrets.CRON_SECRET }}"

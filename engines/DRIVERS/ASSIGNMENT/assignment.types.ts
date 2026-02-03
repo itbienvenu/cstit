@@ -11,6 +11,10 @@ export interface AssignmentEntity {
     status: AssignmentStatus;
     submissionMethod: SubmissionMethod;
     submissionLink?: string; // Used if method is LINK
+    lecturerEmail?: string;
+    lecturerWhatsApp?: string;
+    autoSendSubmissions?: boolean;
+    isDelivered?: boolean;
     createdAt: Date;
     updatedAt: Date;
     deletedAt?: Date;
@@ -23,6 +27,9 @@ export interface CreateAssignmentDTO {
     deadlineAt: Date;
     submissionMethod: SubmissionMethod;
     submissionLink?: string;
+    lecturerEmail?: string;
+    lecturerWhatsApp?: string;
+    autoSendSubmissions?: boolean;
 }
 
 export interface UpdateAssignmentDTO {
@@ -32,6 +39,10 @@ export interface UpdateAssignmentDTO {
     status?: AssignmentStatus;
     submissionMethod?: SubmissionMethod;
     submissionLink?: string;
+    lecturerEmail?: string;
+    lecturerWhatsApp?: string;
+    autoSendSubmissions?: boolean;
+    isDelivered?: boolean;
 }
 
 export interface AssignmentResponseDTO {
